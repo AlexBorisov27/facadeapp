@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#007AFF" />
+  <title>FacadeApp — Управление проектами НВФ</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Сайдбар -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🏢</div>
+        <div>
+          <div class="logo-title">FacadeApp</div>
+          <div class="logo-sub">НВФ · Симплекс Фасад</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-page="home">🏠 Главная</button>
+        <button class="nav-btn" data-page="dashboard">📊 Обзор</button>
+        <button class="nav-btn" data-page="corpses">🏢 Корпуса</button>
+        <button class="nav-btn" data-page="materials">🧱 Материалы</button>
+        <button class="nav-btn" data-page="schedule">📅 График работ</button>
+        <button class="nav-btn" data-page="fact">✅ Факт выполнения</button>
+        <button class="nav-btn" data-page="milestones">📍 Контрольные точки</button>
+        <button class="nav-btn" data-page="deliveries">🚚 Поставки</button>
+        <button class="nav-btn" data-page="suppliers">🏭 Поставщики</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="theme-btn">🌙 Тёмная тема</button>
+        <div class="version">v3.0 · 23.09.2026</div>
+      </div>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 class="page-title" id="pageTitle">Главная</h1>
+          <p class="page-sub" id="pageSub">Обзор состояния проекта</p>
+        </div>
+        <div class="topbar-actions">
+          <input type="search" id="globalSearch" class="search" placeholder="🔍 Поиск..." />
+          <div id="syncIndicator" class="sync-indicator sync-loading" title="Состояние синхронизации">
+            <span class="sync-dot"></span>
+            <span class="sync-text">Подключение...</span>
+          </div>
+          <button id="exportBtn" class="btn btn-primary">⬇ Экспорт CSV</button>
+        </div>
+      </header>
+
+      <section id="content" class="content"></section>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
