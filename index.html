@@ -2,15 +2,102 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#007AFF" />
+  
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+  
+  <!-- iOS -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="FacadeApp" />
+  
+  <!-- Android -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  
   <title>FacadeApp — Управление проектами НВФ</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <div class="app">
 
-    <!-- Сайдбар -->
+  <!-- ═══════════ ЭКРАН ЛОГИНА ═══════════ -->
+   <!-- ═══════════ ЭКРАН ЛОГИНА / РЕГИСТРАЦИИ ═══════════ -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card glass">
+      <div class="login-logo">
+        <div class="login-logo-icon">🏢</div>
+        <div class="login-logo-title">FacadeApp</div>
+        <div class="login-logo-sub">Управление фасадными проектами НВФ</div>
+      </div>
+
+      <!-- Переключатель: Вход / Регистрация -->
+      <div class="login-tabs">
+        <button type="button" class="login-tab active" data-tab="login">Вход</button>
+        <button type="button" class="login-tab" data-tab="register">Регистрация</button>
+        <div class="login-tab-indicator" id="loginTabIndicator"></div>
+      </div>
+
+      <!-- ФОРМА ВХОДА -->
+      <form id="loginForm" class="login-form" autocomplete="on">
+        <div class="login-field">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" required autocomplete="username" />
+        </div>
+
+        <div class="login-field">
+          <label for="loginPassword">Пароль</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password" />
+        </div>
+
+        <div id="loginError" class="login-error"></div>
+
+        <button type="submit" id="loginBtn" class="login-btn">
+          <span class="login-btn-text">Войти</span>
+        </button>
+      </form>
+
+      <!-- ФОРМА РЕГИСТРАЦИИ -->
+      <form id="registerForm" class="login-form" autocomplete="on" style="display:none;">
+        <div class="login-field">
+          <label for="registerName">Имя</label>
+          <input type="text" id="registerName" placeholder="Иван Иванов" autocomplete="name" />
+        </div>
+
+        <div class="login-field">
+          <label for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" placeholder="you@example.com" required autocomplete="username" />
+        </div>
+
+        <div class="login-field">
+          <label for="registerPassword">Пароль</label>
+          <input type="password" id="registerPassword" placeholder="Минимум 6 символов" required minlength="6" autocomplete="new-password" />
+        </div>
+
+        <div class="login-field">
+          <label for="registerPassword2">Повторите пароль</label>
+          <input type="password" id="registerPassword2" placeholder="••••••••" required minlength="6" autocomplete="new-password" />
+        </div>
+
+        <div id="registerError" class="login-error"></div>
+
+        <button type="submit" id="registerBtn" class="login-btn">
+          <span class="login-btn-text">Создать аккаунт</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <button type="button" id="loginForgot" class="login-link">Забыли пароль?</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ ОСНОВНОЕ ПРИЛОЖЕНИЕ ═══════════ -->
+  <div class="app" id="appRoot" style="display:none;">
+
+    <!-- ═══ SIDEBAR ═══ -->
     <aside class="sidebar">
       <div class="logo">
         <div class="logo-icon">🏢</div>
@@ -21,24 +108,104 @@
       </div>
 
       <nav class="nav">
-        <button class="nav-btn active" data-page="home">🏠 Главная</button>
-        <button class="nav-btn" data-page="dashboard">📊 Обзор</button>
-        <button class="nav-btn" data-page="corpses">🏢 Корпуса</button>
-        <button class="nav-btn" data-page="materials">🧱 Материалы</button>
-        <button class="nav-btn" data-page="schedule">📅 График работ</button>
-        <button class="nav-btn" data-page="fact">✅ Факт выполнения</button>
-        <button class="nav-btn" data-page="milestones">📍 Контрольные точки</button>
-        <button class="nav-btn" data-page="deliveries">🚚 Поставки</button>
-        <button class="nav-btn" data-page="suppliers">🏭 Поставщики</button>
+
+        <!-- ОБЗОР (без подпунктов) -->
+        <div class="nav-section active" data-section="overview">
+          <button class="nav-header" data-page="home">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="7" height="9" rx="1.5"/>
+                <rect x="14" y="3" width="7" height="5" rx="1.5"/>
+                <rect x="14" y="12" width="7" height="9" rx="1.5"/>
+                <rect x="3" y="16" width="7" height="5" rx="1.5"/>
+              </svg>
+            </span>
+            <span class="nav-label">Обзор</span>
+          </button>
+        </div>
+
+        <!-- ОБЪЕКТЫ (с подпунктами) -->
+        <div class="nav-section open" data-section="objects">
+          <button class="nav-header" type="button">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/>
+              </svg>
+            </span>
+            <span class="nav-label">Объекты</span>
+            <span class="nav-chevron">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 6l6 6-6 6"/>
+              </svg>
+            </span>
+          </button>
+          <div class="nav-sub">
+            <div class="nav-sub-inner">
+              <button class="nav-item active" data-page="corpses">Корпуса</button>
+              <button class="nav-item" data-page="materials">Материалы</button>
+              <button class="nav-item" data-page="milestones">Контрольные точки</button>
+              <button class="nav-item" data-page="deliveries">Поставки</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- РАБОТЫ (с подпунктами) -->
+        <div class="nav-section" data-section="works">
+          <button class="nav-header" type="button">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M8 2v4M16 2v4M3 10h18"/>
+              </svg>
+            </span>
+            <span class="nav-label">Работы</span>
+            <span class="nav-chevron">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 6l6 6-6 6"/>
+              </svg>
+            </span>
+          </button>
+          <div class="nav-sub">
+            <div class="nav-sub-inner">
+              <button class="nav-item" data-page="schedule">График работ</button>
+              <button class="nav-item" data-page="fact">Факт выполнения</button>
+              <button class="nav-item" data-page="glazing">Остекление</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- АНАЛИТИКА (с подпунктами) -->
+        <div class="nav-section" data-section="analytics">
+          <button class="nav-header" type="button">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 3v18h18M7 14l4-4 4 4 6-8"/>
+              </svg>
+            </span>
+            <span class="nav-label">Аналитика</span>
+            <span class="nav-chevron">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 6l6 6-6 6"/>
+              </svg>
+            </span>
+          </button>
+          <div class="nav-sub">
+            <div class="nav-sub-inner">
+              <button class="nav-item" data-page="dashboard">Обзор проекта</button>
+              <button class="nav-item" data-page="suppliers">Поставщики</button>
+            </div>
+          </div>
+        </div>
+
       </nav>
 
       <div class="sidebar-footer">
         <button id="themeToggle" class="theme-btn">🌙 Тёмная тема</button>
-        <div class="version">v3.0 · 23.09.2026</div>
+        <div class="version">v4.1 · 27.09.2026</div>
       </div>
     </aside>
 
-    <!-- Основной контент -->
+    <!-- ═══ MAIN ═══ -->
     <main class="main">
       <header class="topbar">
         <div>
@@ -47,19 +214,72 @@
         </div>
         <div class="topbar-actions">
           <input type="search" id="globalSearch" class="search" placeholder="🔍 Поиск..." />
+
           <div id="syncIndicator" class="sync-indicator sync-loading" title="Состояние синхронизации">
             <span class="sync-dot"></span>
             <span class="sync-text">Подключение...</span>
           </div>
+
+          <div class="user-menu">
+            <button id="userBtn" class="user-btn" title="Профиль">
+              <span class="user-avatar">👤</span>
+              <span id="userEmail" class="user-email">—</span>
+            </button>
+            <div id="userDropdown" class="user-dropdown glass" style="display:none;">
+              <div class="user-dropdown-header">
+                <div class="user-dropdown-name">Вы вошли как</div>
+                <div id="userDropdownEmail" class="user-dropdown-email">—</div>
+              </div>
+              <button id="logoutBtn" class="user-dropdown-item user-dropdown-logout">
+                🚪 Выйти
+              </button>
+            </div>
+          </div>
+
           <button id="exportBtn" class="btn btn-primary">⬇ Экспорт CSV</button>
         </div>
       </header>
 
+      <!-- ═══ КОНТЕНТ (рендерится из app.js) ═══ -->
       <section id="content" class="content"></section>
     </main>
+
+    <!-- ═══ DETAIL PANEL (справа, скрыт по умолчанию) ═══ -->
+    <div class="overlay" id="overlay"></div>
+    <aside class="detail-panel" id="detailPanel">
+      <div class="dp-header">
+        <div>
+          <div class="dp-title" id="dpTitle">Корпус</div>
+          <div class="dp-sub" id="dpSub">—</div>
+        </div>
+        <button class="dp-close" id="dpClose" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="dp-body" id="dpBody"></div>
+    </aside>
+
   </div>
+
+  <!-- ═══════════ SUPABASE SDK ═══════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+   window.supabase = window.supabase.createClient(
+    "https://dcwmeltcrizsaalxvrlk.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjd21lbHRjcml6c2FhbHh2cmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODY3OTYsImV4cCI6MjEwNTc2Mjc5Nn0.chhVffiuHrMjjfwaf60twSLijCgZnh_-FUdUoYoCl6E"
+  );
+  </script>
 
   <script src="data.js"></script>
   <script src="app.js"></script>
+  <script>
+  // Регистрация Service Worker
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("./sw.js")
+        .then((reg) => console.log("✅ Service Worker зарегистрирован:", reg.scope))
+        .catch((err) => console.warn("Service Worker не зарегистрирован:", err));
+    });
+  }
+</script>
 </body>
 </html>

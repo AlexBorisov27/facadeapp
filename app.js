@@ -1,6 +1,6 @@
 // ============================================================
-//  FacadeApp v3.0 - часть 1/3
-//  Константы, хранилище, Supabase-клиент, синхронизация
+//  FacadeApp v4.1 - часть 1/3
+//  Авторизация, Supabase, вспомогательные функции
 // ============================================================
 
 const $ = (sel) => document.querySelector(sel);
@@ -27,20 +27,326 @@ const nowStamp = () => {
 const daysBetween = (a, b) => Math.round((b - a) / 86400000);
 
 // ============================================================
-//  SUPABASE КЛИЕНТ
+//  АВТОРИЗАЦИЯ (Supabase Auth)
 // ============================================================
-const SUPABASE_URL = "https://dcwmeltcrizsaalxvrlk.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjd21lbHRjcml6c2FhbHh2cmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODY3OTYsImV4cCI6MjEwNTc2Mjc5Nn0.chhVffiuHrMjjfwaf60twSLijCgZnh_-FUdUoYoCl6E";
-const SUPABASE_TABLE = "project_state";
-const SUPABASE_ROW = "main";
 
+let currentUser = null;
+
+async function checkAuth() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user || null;
+  } catch (e) {
+    console.warn("Ошибка проверки сессии:", e);
+    return null;
+  }
+}
+
+async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data.user;
+}
+async function signUp(email, password, name) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { name: name || "" },
+      emailRedirectTo: window.location.origin,
+    },
+  });
+  if (error) throw error;
+  return data.user;
+}
+
+async function signOut() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  showLoginScreen();
+}
+
+function showLoginScreen() {
+  const loginScreen = document.getElementById("loginScreen");
+  const appRoot = document.getElementById("appRoot");
+  if (loginScreen) loginScreen.style.display = "flex";
+  if (appRoot) appRoot.style.display = "none";
+
+  // Очищаем поля паролей
+  const pwd = document.getElementById("loginPassword");
+  if (pwd) pwd.value = "";
+  const pwd2 = document.getElementById("registerPassword");
+  if (pwd2) pwd2.value = "";
+  const pwd3 = document.getElementById("registerPassword2");
+  if (pwd3) pwd3.value = "";
+
+  // Возвращаемся на вкладку «Вход»
+  const loginTab = document.querySelector('.login-tab[data-tab="login"]');
+  if (loginTab) loginTab.click();
+}
+
+function showAppScreen(user) {
+  currentUser = user;
+  const loginScreen = document.getElementById("loginScreen");
+  const appRoot = document.getElementById("appRoot");
+  if (loginScreen) loginScreen.style.display = "none";
+  if (appRoot) appRoot.style.display = "grid";
+
+  const userEmail = document.getElementById("userEmail");
+  const userDropdownEmail = document.getElementById("userDropdownEmail");
+  if (userEmail) userEmail.textContent = user.email;
+  if (userDropdownEmail) userDropdownEmail.textContent = user.email;
+}
+
+function showLoginError(msg) {
+  const err = document.getElementById("loginError");
+  if (!err) return;
+  err.textContent = msg;
+  err.classList.add("show");
+  err.style.background = "";
+  err.style.borderColor = "";
+  err.style.color = "";
+}
+
+function showLoginSuccess(msg) {
+  const err = document.getElementById("loginError");
+  if (!err) return;
+  err.textContent = msg;
+  err.classList.add("show");
+  err.style.background = "rgba(52, 199, 89, 0.1)";
+  err.style.borderColor = "rgba(52, 199, 89, 0.3)";
+  err.style.color = "var(--green)";
+}
+
+function clearLoginError() {
+  const err = document.getElementById("loginError");
+  if (err) {
+    err.textContent = "";
+    err.classList.remove("show");
+  }
+}
+function showRegisterError(msg) {
+  const err = document.getElementById("registerError");
+  if (!err) return;
+  err.textContent = msg;
+  err.classList.add("show");
+  err.style.background = "";
+  err.style.borderColor = "";
+  err.style.color = "";
+}
+
+function showRegisterSuccess(msg) {
+  const err = document.getElementById("registerError");
+  if (!err) return;
+  err.textContent = msg;
+  err.classList.add("show");
+  err.style.background = "rgba(52, 199, 89, 0.1)";
+  err.style.borderColor = "rgba(52, 199, 89, 0.3)";
+  err.style.color = "var(--green)";
+}
+
+function clearRegisterError() {
+  const err = document.getElementById("registerError");
+  if (err) {
+    err.textContent = "";
+    err.classList.remove("show");
+  }
+}
+
+function initLoginHandlers() {
+  const loginForm = document.getElementById("loginForm");
+  const registerForm = document.getElementById("registerForm");
+  const loginBtn = document.getElementById("loginBtn");
+  const registerBtn = document.getElementById("registerBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const userBtn = document.getElementById("userBtn");
+  const dropdown = document.getElementById("userDropdown");
+  const forgotBtn = document.getElementById("loginForgot");
+  const tabs = document.querySelectorAll(".login-tab");
+  const indicator = document.getElementById("loginTabIndicator");
+
+  // ─── Переключение вкладок Вход / Регистрация ───
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      tabs.forEach(t => t.classList.toggle("active", t === tab));
+      if (indicator) indicator.classList.toggle("right", target === "register");
+
+      if (target === "login") {
+        loginForm.style.display = "flex";
+        registerForm.style.display = "none";
+        clearLoginError();
+        clearRegisterError();
+      } else {
+        loginForm.style.display = "none";
+        registerForm.style.display = "flex";
+        clearLoginError();
+        clearRegisterError();
+      }
+    });
+  });
+
+  // ─── Вход ───
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearLoginError();
+
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      if (!email || !password) {
+        showLoginError("Заполните email и пароль");
+        return;
+      }
+
+      const btnText = loginBtn.querySelector(".login-btn-text");
+      const originalText = btnText.textContent;
+      loginBtn.disabled = true;
+      btnText.textContent = "Вход...";
+
+      try {
+        const user = await signIn(email, password);
+        showAppScreen(user);
+        await loadFromCloud();
+        showPage("home");
+      } catch (err) {
+        console.error("Ошибка входа:", err);
+        const msg = (err.message || "").toLowerCase();
+        if (msg.includes("invalid") || msg.includes("credentials")) {
+          showLoginError("Неверный email или пароль");
+        } else if (msg.includes("email not confirmed")) {
+          showLoginError("Email не подтверждён. Проверьте почту.");
+        } else {
+          showLoginError("Ошибка входа: " + (err.message || "неизвестная"));
+        }
+      } finally {
+        loginBtn.disabled = false;
+        btnText.textContent = originalText;
+      }
+    });
+  }
+
+  // ─── Регистрация ───
+  if (registerForm) {
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearRegisterError();
+
+      const name = document.getElementById("registerName").value.trim();
+      const email = document.getElementById("registerEmail").value.trim();
+      const password = document.getElementById("registerPassword").value;
+      const password2 = document.getElementById("registerPassword2").value;
+
+      // Валидация
+      if (!email || !password) {
+        showRegisterError("Заполните email и пароль");
+        return;
+      }
+      if (password.length < 6) {
+        showRegisterError("Пароль должен быть не менее 6 символов");
+        return;
+      }
+      if (password !== password2) {
+        showRegisterError("Пароли не совпадают");
+        return;
+      }
+
+      const btnText = registerBtn.querySelector(".login-btn-text");
+      const originalText = btnText.textContent;
+      registerBtn.disabled = true;
+      btnText.textContent = "Создание...";
+
+      try {
+        const user = await signUp(email, password, name);
+
+        // Проверка: email уже занят
+        if (user && user.identities && user.identities.length === 0) {
+          showRegisterError("Этот email уже зарегистрирован");
+          return;
+        }
+
+        // Проверяем, есть ли сессия сразу (confirm email выключен)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          showAppScreen(session.user);
+          await loadFromCloud();
+          showPage("home");
+        } else {
+          // Confirm email включён — ждём подтверждения
+          showRegisterSuccess(
+            "Аккаунт создан! Проверьте почту " + email + " и подтвердите регистрацию."
+          );
+          registerForm.reset();
+          setTimeout(() => {
+            const loginTab = document.querySelector('.login-tab[data-tab="login"]');
+            if (loginTab) loginTab.click();
+          }, 3000);
+        }
+      } catch (err) {
+        console.error("Ошибка регистрации:", err);
+        const msg = (err.message || "").toLowerCase();
+        if (msg.includes("already registered") || msg.includes("already exists")) {
+          showRegisterError("Этот email уже зарегистрирован");
+        } else if (msg.includes("password")) {
+          showRegisterError("Пароль слишком слабый (минимум 6 символов)");
+        } else if (msg.includes("rate limit")) {
+          showRegisterError("Слишком много попыток. Попробуйте через минуту.");
+        } else {
+          showRegisterError("Ошибка: " + (err.message || "неизвестная"));
+        }
+      } finally {
+        registerBtn.disabled = false;
+        btnText.textContent = originalText;
+      }
+    });
+  }
+
+  // ─── Выход ───
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      if (dropdown) dropdown.style.display = "none";
+      await signOut();
+    });
+  }
+
+  // ─── Меню пользователя ───
+  if (userBtn && dropdown) {
+    userBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
+    });
+    document.addEventListener("click", () => {
+      if (dropdown) dropdown.style.display = "none";
+    });
+    dropdown.addEventListener("click", (e) => e.stopPropagation());
+  }
+
+  // ─── Забыли пароль ───
+  if (forgotBtn) {
+    forgotBtn.addEventListener("click", async () => {
+      const email = document.getElementById("loginEmail").value.trim();
+      if (!email) {
+        showLoginError("Введите email в поле выше");
+        return;
+      }
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) throw error;
+        showLoginSuccess("Письмо для сброса пароля отправлено на " + email);
+      } catch (err) {
+        showLoginError("Ошибка: " + (err.message || "неизвестная"));
+      }
+    });
+  }
+  }
 // ============================================================
-//  ХРАНИЛИЩЕ
+//  ХРАНИЛИЩЕ (localStorage)
 // ============================================================
-const KEY_MILESTONES = "facadeapp.milestones.v3";
-const KEY_DELIVERIES = "facadeapp.deliveries.v3";
-const KEY_FACTS      = "facadeapp.facts.v3";
-const KEY_SUPPLIERS  = "facadeapp.suppliers.v3";
+const KEY_MILESTONES = "facadeapp.milestones.v4";
+const KEY_DELIVERIES = "facadeapp.deliveries.v4";
+const KEY_FACTS      = "facadeapp.facts.v4";
+const KEY_SUPPLIERS  = "facadeapp.suppliers.v4";
 
 function loadStore(key, fallback) {
   try {
@@ -48,6 +354,7 @@ function loadStore(key, fallback) {
     return raw ? JSON.parse(raw) : fallback;
   } catch (e) { return fallback; }
 }
+
 function saveStore(key, data) {
   try { localStorage.setItem(key, JSON.stringify(data)); }
   catch (e) { console.warn("LocalStorage error:", e); }
@@ -61,6 +368,113 @@ let MILESTONE_STATE = loadStore(KEY_MILESTONES, {});
 let DELIVERY_STATE  = loadStore(KEY_DELIVERIES, {});
 let FACT_STATE      = loadStore(KEY_FACTS, {});
 let SUPPLIERS_STATE = loadStore(KEY_SUPPLIERS, JSON.parse(JSON.stringify(SUPPLIERS)));
+
+// ============================================================
+//  СИНХРОНИЗАЦИЯ С ОБЛАКОМ (Supabase)
+// ============================================================
+let syncTimer = null;
+let syncInFlight = false;
+let pendingSave = false;
+
+function setSyncStatus(status, text) {
+  const el = document.getElementById("syncIndicator");
+  if (!el) return;
+  el.className = "sync-indicator sync-" + status;
+  const txt = el.querySelector(".sync-text");
+  if (txt) txt.textContent = text;
+}
+
+function collectAllData() {
+  return {
+    version: 4,
+    savedAt: nowStamp(),
+    milestones: MILESTONE_STATE,
+    deliveries: DELIVERY_STATE,
+    facts: FACT_STATE,
+    suppliers: SUPPLIERS_STATE,
+  };
+}
+
+function applyAllData(data) {
+  if (!data || typeof data !== "object") return false;
+  if (data.milestones) MILESTONE_STATE = data.milestones;
+  if (data.deliveries) DELIVERY_STATE = data.deliveries;
+  if (data.facts)      FACT_STATE = data.facts;
+  if (data.suppliers)  SUPPLIERS_STATE = data.suppliers;
+
+  saveStore(KEY_MILESTONES, MILESTONE_STATE);
+  saveStore(KEY_DELIVERIES, DELIVERY_STATE);
+  saveStore(KEY_FACTS, FACT_STATE);
+  saveStore(KEY_SUPPLIERS, SUPPLIERS_STATE);
+  return true;
+}
+
+async function loadFromCloud() {
+  setSyncStatus("loading", "Загрузка...");
+  try {
+    const { data, error } = await supabase
+      .from("project_state")
+      .select("data")
+      .eq("id", "main")
+      .single();
+
+    if (error) throw error;
+
+    if (data && data.data && Object.keys(data.data).length) {
+      applyAllData(data.data);
+      setSyncStatus("ok", "Облако OK");
+      console.log("Данные загружены из облака");
+      return true;
+    }
+    setSyncStatus("ok", "Облако OK");
+    console.log("Облако пустое — работаем локально");
+    return false;
+  } catch (e) {
+    console.warn("Ошибка загрузки из облака:", e);
+    setSyncStatus("error", "Офлайн");
+    return false;
+  }
+}
+
+async function saveToCloud(immediate = false) {
+  if (syncInFlight) { pendingSave = true; return; }
+
+  const doSave = async () => {
+    syncInFlight = true;
+    setSyncStatus("saving", "Сохранение...");
+    try {
+      const { error } = await supabase
+        .from("project_state")
+        .update({
+          data: collectAllData(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", "main");
+
+      if (error) throw error;
+      setSyncStatus("ok", "Облако OK");
+      console.log("Сохранено в облако:", nowStamp());
+    } catch (e) {
+      console.warn("Ошибка сохранения:", e);
+      setSyncStatus("error", "Офлайн");
+    } finally {
+      syncInFlight = false;
+      if (pendingSave) {
+        pendingSave = false;
+        saveToCloud(true);
+      }
+    }
+  };
+
+  if (syncTimer) clearTimeout(syncTimer);
+  if (immediate) {
+    syncTimer = null;
+    await doSave();
+  } else {
+    setSyncStatus("saving", "Сохранение...");
+    syncTimer = setTimeout(doSave, 1000);
+  }
+}
 
 // ============================================================
 //  СВЯЗЬ ЭТАП ↔ МАТЕРИАЛ
@@ -150,156 +564,40 @@ function projectProgress() {
 }
 
 // ============================================================
-//  СИНХРОНИЗАЦИЯ С ОБЛАКОМ (SUPABASE)
-// ============================================================
-let syncTimer = null;
-let syncInFlight = false;
-let pendingSave = false;
-
-function setSyncStatus(status, text) {
-  const el = document.getElementById("syncIndicator");
-  if (!el) return;
-  el.className = "sync-indicator sync-" + status;
-  const txt = el.querySelector(".sync-text");
-  if (txt) txt.textContent = text;
-}
-
-function collectAllData() {
-  return {
-    version: 3,
-    savedAt: nowStamp(),
-    milestones: MILESTONE_STATE,
-    deliveries: DELIVERY_STATE,
-    facts: FACT_STATE,
-    suppliers: SUPPLIERS_STATE,
-  };
-}
-
-function applyAllData(data) {
-  if (!data || typeof data !== "object") return false;
-  if (data.milestones) MILESTONE_STATE = data.milestones;
-  if (data.deliveries) DELIVERY_STATE = data.deliveries;
-  if (data.facts)      FACT_STATE = data.facts;
-  if (data.suppliers)  SUPPLIERS_STATE = data.suppliers;
-
-  saveStore(KEY_MILESTONES, MILESTONE_STATE);
-  saveStore(KEY_DELIVERIES, DELIVERY_STATE);
-  saveStore(KEY_FACTS, FACT_STATE);
-  saveStore(KEY_SUPPLIERS, SUPPLIERS_STATE);
-  return true;
-}
-
-async function loadFromCloud() {
-  setSyncStatus("loading", "Загрузка...");
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${SUPABASE_ROW}&select=data`;
-    const res = await fetch(url, {
-      headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
-      },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const arr = await res.json();
-    if (Array.isArray(arr) && arr.length && arr[0].data && Object.keys(arr[0].data).length) {
-      applyAllData(arr[0].data);
-      setSyncStatus("ok", "Облако OK");
-      console.log("Данные загружены из облака");
-      return true;
-    }
-    setSyncStatus("ok", "Облако OK");
-    console.log("Облако пустое — работаем локально");
-    return false;
-  } catch (e) {
-    console.warn("Ошибка загрузки из облака:", e);
-    setSyncStatus("error", "Офлайн");
-    return false;
-  }
-}
-
-async function saveToCloud(immediate = false) {
-  if (syncInFlight) { pendingSave = true; return; }
-
-  const doSave = async () => {
-    syncInFlight = true;
-    setSyncStatus("saving", "Сохранение...");
-    try {
-      const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${SUPABASE_ROW}`;
-      const res = await fetch(url, {
-        method: "PATCH",
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=minimal",
-        },
-        body: JSON.stringify({
-          data: collectAllData(),
-          updated_at: new Date().toISOString(),
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setSyncStatus("ok", "Облако OK");
-      console.log("Сохранено в облако:", nowStamp());
-    } catch (e) {
-      console.warn("Ошибка сохранения:", e);
-      setSyncStatus("error", "Офлайн");
-    } finally {
-      syncInFlight = false;
-      if (pendingSave) {
-        pendingSave = false;
-        saveToCloud(true);
-      }
-    }
-  };
-
-  if (syncTimer) clearTimeout(syncTimer);
-  if (immediate) {
-    syncTimer = null;
-    await doSave();
-  } else {
-    setSyncStatus("saving", "Сохранение...");
-    syncTimer = setTimeout(doSave, 1000);
-  }
-}
-
-// ============================================================
 //  МЕТАДАННЫЕ СТРАНИЦ
 // ============================================================
 const PAGES = {
-  home:        { title: "Главная", sub: "Обзор состояния проекта" },
-  dashboard:   { title: "Обзор проекта", sub: "Сводные метрики по всем корпусам" },
-  corpses:     { title: "Корпуса", sub: "Детальная информация по каждому корпусу" },
-  materials:   { title: "Материалы", sub: "Плитка · Композит · Каркас и крепёж" },
-  "mat-tile":  { title: "Плитка", sub: "Распределение по цветам NCS", parent: "materials" },
-  "mat-comp":  { title: "Композит", sub: "Объёмы по корпусам", parent: "materials" },
-  "mat-frame": { title: "Каркас и крепёж", sub: "Кронштейны, направляющие, метизы", parent: "materials" },
-  schedule:    { title: "График работ", sub: "Диаграмма Ганта · контрольные точки" },
-  fact:        { title: "Факт выполнения", sub: "Учёт выполненных работ по корпусам" },
+  home:        { title: "Главная",           sub: "Обзор состояния проекта" },
+  dashboard:   { title: "Обзор проекта",     sub: "Сводные метрики по всем корпусам" },
+  corpses:     { title: "Корпуса",           sub: "Детальная информация по каждому корпусу" },
+  materials:   { title: "Материалы",         sub: "Плитка · Композит · Каркас и крепёж" },
+  "mat-tile":  { title: "Плитка",            sub: "Распределение по цветам NCS",        parent: "materials" },
+  "mat-comp":  { title: "Композит",          sub: "Объёмы по корпусам",                 parent: "materials" },
+  "mat-frame": { title: "Каркас и крепёж",   sub: "Кронштейны, направляющие, метизы",   parent: "materials" },
+  schedule:    { title: "График работ",      sub: "Диаграмма Ганта · НВФ и Остекление" },
+  glazing:     { title: "Остекление",        sub: "Витражные окна и балконные блоки" },
+  fact:        { title: "Факт выполнения",   sub: "Учёт выполненных работ по корпусам" },
   milestones:  { title: "Контрольные точки", sub: "Ключевые события проекта" },
-  deliveries:  { title: "Поставки", sub: "Учёт приёмки материалов по корпусам" },
-  suppliers:   { title: "Поставщики", sub: "Контрагенты и статусы договоров" },
+  deliveries:  { title: "Поставки",          sub: "Учёт приёмки материалов по корпусам" },
+  suppliers:   { title: "Поставщики",        sub: "Контрагенты и статусы договоров" },
 };
 
 let currentPage = "home";
+let detailOpenCorpse = null;
 
 // ============================================================
 //  КОНЕЦ ЧАСТИ 1/3
-//  Продолжение — в части 2/3
-// ============================================================// ============================================================
-//  FacadeApp v3.0 - часть 2/3
-//  Рендер-функции страниц (Главная, Обзор, Корпуса, Материалы, График)
+//  Часть 2 — рендер-функции (главная, корпуса, Гант, остекление)
+// ============================================================
+// ============================================================
+//  FacadeApp v4.1 - часть 2/3
+//  Рендер-функции: главная, корпуса, график, остекление, detail panel
 // ============================================================
 
 // ============================================================
-//  ГЛАВНАЯ
+//  ГЛАВНАЯ — новый дизайн
 // ============================================================
 function renderHome() {
-  const totalArea = Object.values(CORPSES).reduce((s, c) => s + c.total, 0);
-  const progress = projectProgress();
-  const totalMilestones = MILESTONES.length;
-  const doneMilestones = Object.values(MILESTONE_STATE).filter(s => s && s.done).length;
-
   const hour = new Date().getHours();
   let greet = "Добрый день";
   if (hour < 6) greet = "Доброй ночи";
@@ -310,6 +608,84 @@ function renderHome() {
   const today = new Date();
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
+  const dateStr = today.toLocaleDateString("ru-RU", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric"
+  });
+  const dateCap = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
+  // ─── Потоки (НВФ + Остекление) ───
+  const nvf = FLOW_SUMMARY.nvf;
+  const glz = FLOW_SUMMARY.glz;
+
+  const flowCard = (label, flow, isGlazing) => {
+    const statusClass = flow.status === "ok" ? "ok" : flow.status === "warn" ? "warn" : "bad";
+    const statusText = flow.status === "ok" ? "В графике" : flow.status === "warn" ? "Отстаём" : "Критично";
+    return `
+      <div class="flow${isGlazing ? ' glazing' : ''}">
+        <div class="head">
+          <div class="title"><span class="dot"></span>${label}</div>
+          <span class="badge ${statusClass}">${statusText}</span>
+        </div>
+        <div class="progress"><div class="fill ${statusClass}" style="width:${flow.fact}%"></div></div>
+        <div class="nums">
+          <div><div class="lbl">План</div><div class="val">${flow.plan}%</div></div>
+          <div><div class="lbl">Факт</div><div class="val ${statusClass}">${flow.fact}%</div></div>
+          <div><div class="lbl">Откл.</div><div class="val ${statusClass}">${flow.deviation}</div></div>
+        </div>
+      </div>
+    `;
+  };
+
+  // ─── Вердикт ───
+  const verdictHtml = nvf.status === "warn"
+    ? `НВФ отстаёт на <b>${nvf.deviation.replace("−", "").replace(" ", " ")}</b>. Остекление идёт в графике.`
+    : nvf.status === "ok"
+      ? `Оба потока идут в графике.`
+      : `НВФ в критическом состоянии. Требуется вмешательство.`;
+
+  // ─── Список корпусов ───
+  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
+  const corpsesHtml = corpseOrder.map(cid => {
+    const c = CORPSES[cid];
+    const dotClass = c.status === "ok" ? "" : c.status;
+    return `
+      <div class="corpse-row" data-corpse="${cid}">
+        <div class="corpse-row-head">
+          <div class="corpse-row-id">
+            <span class="corpse-row-dot ${dotClass}"></span>
+            ${cid}
+          </div>
+          <div class="corpse-row-status ${c.status}">${c.statusText}</div>
+        </div>
+        <div class="corpse-row-sub">${c.floors} эт. · ${c.code}</div>
+        <div class="corpse-row-bars">
+          <div class="corpse-row-bar">
+            <span class="corpse-row-label">НВФ</span>
+            <div class="corpse-row-track"><div class="corpse-row-fill" style="width:${c.nvfPct}%"></div></div>
+            <span class="corpse-row-percent">${c.nvfPct}%</span>
+          </div>
+          <div class="corpse-row-bar">
+            <span class="corpse-row-label">Остекление</span>
+            <div class="corpse-row-track"><div class="corpse-row-fill glz" style="width:${c.glz}%"></div></div>
+            <span class="corpse-row-percent">${c.glz}%</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // ─── Лента событий ───
+  const feedHtml = FEED.map(f => `
+    <div class="feed-item">
+      <div class="dot ${f.type}"></div>
+      <div class="body">
+        <div><b>${f.user}</b> ${f.text}</div>
+        <div class="meta">${f.corp ? "Корпус " + f.corp + " · " : ""}${f.time}</div>
+      </div>
+    </div>
+  `).join("");
+
+  // ─── Ближайшие КТ ───
   const upcoming = MILESTONES
     .filter(m => !(MILESTONE_STATE[milestoneKey(m)]?.done))
     .map(m => ({ ...m, dateObj: parseDate(m.date) }))
@@ -329,95 +705,366 @@ function renderHome() {
         </div>
       </div>
     `;
-  }).join("") : `<div class="empty-state">Все контрольные точки пройдены 🎉</div>`;
+  }).join("") : `<div class="empty-state">Все контрольные точки пройдены</div>`;
 
-  const activeCorpses = Object.keys(CORPSES).sort().filter(cid => {
-    const endDate = parseDate(CORPSES[cid].end);
-    return endDate >= todayMidnight;
-  });
+  return `
+    <div class="home-hero glass">
+      <div class="home-greet">${greet}!</div>
+      <div class="home-project">Проект: Кавказский б-р, з/у 51/3</div>
+      <div class="home-subtitle">${dateCap} · 7 корпусов · 2 этапа</div>
+    </div>
 
-  const activeHtml = activeCorpses.slice(0, 4).map(cid => {
-    const c = CORPSES[cid];
-    const prog = corpseProgress(cid);
-    return `
-      <div class="home-corpus glass" data-goto="fact">
-        <div class="home-corpus-name">Корпус ${cid}</div>
-        <div class="home-corpus-meta">${c.floors} эт. · ${fmt(c.total)} м²</div>
-        <div class="home-corpus-bar">
-          <div class="home-corpus-fill" style="width:${prog}%"></div>
-        </div>
-        <div class="home-corpus-progress">${prog}%</div>
+    <div class="flows">
+      ${flowCard("НВФ", nvf, false)}
+      ${flowCard("Остекление", glz, true)}
+    </div>
+
+    <div class="verdict">
+      <div class="ico">!</div>
+      <div class="text">${verdictHtml}</div>
+    </div>
+
+    <div class="quick">
+      <button class="quick-btn" data-goto="schedule">
+        <span class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M8 2v4M16 2v4M3 10h18"/>
+          </svg>
+        </span>
+        <span class="lbl">График</span>
+      </button>
+      <button class="quick-btn" data-goto="glazing">
+        <span class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 12h18M12 3v18"/>
+          </svg>
+        </span>
+        <span class="lbl">Остекление</span>
+      </button>
+      <button class="quick-btn" id="quickExport">
+        <span class="ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/>
+          </svg>
+        </span>
+        <span class="lbl">Экспорт</span>
+      </button>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Корпуса</h2>
+        <button class="section-action" data-goto="corpses">Все →</button>
       </div>
-    `;
-  }).join("");
+      <div class="corpses-list">${corpsesHtml}</div>
+    </div>
 
-  const stages = ["Монтаж кронштейнов", "Монтаж утеплителя", "Монтаж направляющих", "Монтаж плитки", "Откосы / отливы"];
-  const stageIcons = {
-    "Монтаж кронштейнов": "🔩",
-    "Монтаж утеплителя": "🧊",
-    "Монтаж направляющих": "➡️",
-    "Монтаж плитки": "🎨",
-    "Откосы / отливы": "📐",
-  };
-  const factStagesHtml = stages.map(st => {
-    const pct = stageProgressReal(st);
+    <div class="section">
+      <div class="section-head">
+        <h2>Последние изменения</h2>
+      </div>
+      <div class="feed">${feedHtml}</div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Ближайшие контрольные точки</h2>
+        <button class="section-action" data-goto="milestones">Все →</button>
+      </div>
+      <div class="home-kt-list">${upcomingHtml}</div>
+    </div>
+  `;
+}
+
+// ============================================================
+//  КОРПУСА — компактный список
+// ============================================================
+function renderCorpses() {
+  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
+
+  const rowsHtml = corpseOrder.map(cid => {
+    const c = CORPSES[cid];
+    const dotClass = c.status === "ok" ? "" : c.status;
     return `
-      <div class="home-fact-stage">
-        <div class="home-fact-stage-name">
-          <span>${stageIcons[st]} ${st}</span>
-          <span class="home-fact-stage-pct">${pct}%</span>
+      <div class="corpse-row" data-corpse="${cid}">
+        <div class="corpse-row-head">
+          <div class="corpse-row-id">
+            <span class="corpse-row-dot ${dotClass}"></span>
+            Корпус ${cid}
+          </div>
+          <div class="corpse-row-status ${c.status}">${c.statusText}</div>
         </div>
-        <div class="home-fact-stage-bar">
-          <div class="home-fact-stage-fill" style="width:${pct}%"></div>
+        <div class="corpse-row-sub">${c.floors} · ${c.height} м · ${c.code} · ${c.rev}</div>
+        <div class="corpse-row-bars">
+          <div class="corpse-row-bar">
+            <span class="corpse-row-label">НВФ</span>
+            <div class="corpse-row-track"><div class="corpse-row-fill" style="width:${c.nvfPct}%"></div></div>
+            <span class="corpse-row-percent">${c.nvfPct}%</span>
+          </div>
+          <div class="corpse-row-bar">
+            <span class="corpse-row-label">Остекление</span>
+            <div class="corpse-row-track"><div class="corpse-row-fill glz" style="width:${c.glz}%"></div></div>
+            <span class="corpse-row-percent">${c.glz}%</span>
+          </div>
         </div>
       </div>
     `;
   }).join("");
 
   return `
-    <div class="home-hero glass">
-      <div class="home-greet">${greet}! 👋</div>
-      <div class="home-project">Проект: Кавказский б-р, з/у 51/3</div>
-      <div class="home-subtitle">7 корпусов · 2 этапа · до 30.08.2027</div>
-    </div>
-
-    <div class="home-kpi-grid">
-      <div class="home-kpi glass">
-        <div class="home-kpi-value" style="color:var(--blue)">${Object.keys(CORPSES).length}</div>
-        <div class="home-kpi-label">Корпусов</div>
-      </div>
-      <div class="home-kpi glass">
-        <div class="home-kpi-value" style="color:var(--green)">${fmt(totalArea)}</div>
-        <div class="home-kpi-label">м² фасада</div>
-      </div>
-      <div class="home-kpi glass">
-        <div class="home-kpi-value" style="color:var(--orange)">${progress}%</div>
-        <div class="home-kpi-label">Прогресс работ</div>
-      </div>
-      <div class="home-kpi glass">
-        <div class="home-kpi-value" style="color:var(--purple)">${doneMilestones}<span style="font-size:16px;color:var(--text-gray)">/${totalMilestones}</span></div>
-        <div class="home-kpi-label">Выполнено КТ</div>
-      </div>
-    </div>
-
-    <div class="home-fact-block glass">
-      <div class="home-fact-head">
-        <div class="home-fact-title">✅ Фактическое выполнение</div>
-        <div class="home-fact-total">${progress}%</div>
-      </div>
-      <div class="home-fact-total-bar">
-        <div class="home-fact-total-fill" style="width:${progress}%"></div>
-      </div>
-      <div class="home-fact-stages">${factStagesHtml}</div>
-    </div>
-
-    <div class="home-section-title">📍 Ближайшие контрольные точки</div>
-    <div class="home-kt-list">${upcomingHtml}</div>
-
-    <div class="home-section-title">🏢 Активные корпуса</div>
-    <div class="home-corpse-grid">${activeHtml}</div>
+    <div class="corpses-list">${rowsHtml}</div>
+    <p style="font-size:12px;color:var(--text-gray);margin-top:16px;padding:0 4px;">
+      Клик по корпусу — детали справа
+    </p>
   `;
 }
+
+// ============================================================
+//  ГРАФИК — раскрывающийся Гант
+// ============================================================
+function renderSchedule() {
+  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
+
+  const renderStage = (stage) => `
+    <div class="stage-item">
+      <div class="stage-name">${stage.name}</div>
+      <div class="stage-progress"><div class="fill ${stage.status}" style="width:${stage.fact}%"></div></div>
+      <div class="stage-status ${stage.status}">${stage.fact}%</div>
+    </div>
+  `;
+
+  const corpsHtml = corpseOrder.map(cid => {
+    const g = GANTT_DATA[cid];
+    if (!g) return "";
+    const nvfStages = g.nvf.stages.map(renderStage).join("");
+    const glzStages = g.glz.stages.map(renderStage).join("");
+
+    return `
+      <div class="gantt-corp" data-corp="${cid}">
+        <div class="gantt-corp-row">
+          <div class="label">
+            ${cid}
+            <small>${g.meta.floors} · ${g.meta.area} м²</small>
+          </div>
+          <div class="gantt-bars">
+            <div class="gantt-bar nvf" style="left:${g.nvf.left}%; width:${g.nvf.width}%;"></div>
+            <div class="gantt-bar glz" style="left:${g.glz.left}%; width:${g.glz.width}%;"></div>
+            <div class="gantt-fact-line" style="left:${g.nvf.left + g.nvf.width * (g.nvf.fact / 100)}%;"></div>
+          </div>
+          <div class="chevron">›</div>
+        </div>
+        <div class="gantt-detail">
+          <div class="detail-inner">
+            ${nvfStages ? `<div class="detail-title">НВФ · по этапам</div>${nvfStages}` : ""}
+            ${glzStages ? `<div class="detail-title">Остекление · по этапам</div>${glzStages}` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="gantt">
+      <div class="gantt-header">
+        <h3>Диаграмма Ганта</h3>
+        <div class="legend">
+          <div class="item"><span class="sw nvf"></span>НВФ</div>
+          <div class="item"><span class="sw glz"></span>Остекление</div>
+          <div class="item"><span class="sw fact"></span>Факт</div>
+        </div>
+      </div>
+
+      <div class="gantt-chart">
+        <div class="gantt-months">
+          <div></div>
+          <div class="row">
+            <span>сен</span><span>окт</span><span>ноя</span><span>дек</span>
+            <span>янв</span><span>фев</span><span>мар</span><span>апр</span>
+          </div>
+        </div>
+
+        ${corpsHtml}
+      </div>
+
+      <p style="font-size:12px;color:var(--text-gray);margin-top:16px;line-height:1.5;">
+        Красная линия — фактическая дата. <b>Клик по корпусу</b> — детализация по этапам.
+      </p>
+    </div>
+  `;
+}
+
+// ============================================================
+//  ОСТЕКЛЕНИЕ — карточки марок
+// ============================================================
+function renderGlazing() {
+  const stats = GLAZING_STATS;
+
+  const statsHtml = `
+    <div class="stat"><div class="t">Марок</div><div class="v">${stats.marks}</div></div>
+    <div class="stat"><div class="t">Изделий</div><div class="v">${stats.items} <small>шт</small></div></div>
+    <div class="stat"><div class="t">Площадь</div><div class="v">${fmt(stats.area)} <small>м²</small></div></div>
+    <div class="stat"><div class="t">Готово</div><div class="v">${stats.done} <small>марки</small></div></div>
+    <div class="stat"><div class="t">Критично</div><div class="v" style="color:var(--red)">${stats.critical}</div></div>
+  `;
+
+  const statusText = { ok: "В графике", warn: "Отстаём", bad: "Критично", future: "Будущее" };
+
+  const marksHtml = MARKS.map(m => `
+    <div class="mark ${m.status}">
+      <div class="top">
+        <div class="code">${m.code}</div>
+        <span class="badge ${m.status}">${statusText[m.status]}</span>
+      </div>
+      <div class="badges">
+        <span class="tag corp">Корпус ${m.corp}</span>
+        <span class="tag type">${m.type}</span>
+        <span class="tag ${m.stage === "№1" ? "stage1" : "stage2"}">Этап ${m.stage}</span>
+      </div>
+      <div class="meta">
+        <span>Габарит: <b>${m.size}</b></span>
+        <span>Кол-во: <b>${m.qty} шт</b></span>
+        <span>Площадь: <b>${m.area} м²</b></span>
+      </div>
+      <div class="fact-bar">
+        <div class="progress"><div class="fill ${m.status}" style="width:${m.fact}%"></div></div>
+        <div class="pct">${m.fact}%</div>
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="chips">
+      <button class="chip on">Все типы</button>
+      <button class="chip">Витраж</button>
+      <button class="chip">Балкон</button>
+      <button class="chip">Этап №1</button>
+      <button class="chip">Этап №2</button>
+    </div>
+
+    <div class="stat-grid">${statsHtml}</div>
+
+    ${marksHtml}
+  `;
+}
+
+// ============================================================
+//  DETAIL PANEL — справа
+// ============================================================
+function renderDetailPanel(cid) {
+  const c = CORPSES[cid];
+  if (!c) return;
+
+  const dotClass = c.status === "ok" ? "" : c.status;
+
+  document.getElementById("dpTitle").textContent = "Корпус " + cid;
+  document.getElementById("dpSub").textContent = c.floors + " · " + c.code;
+
+  document.getElementById("dpBody").innerHTML = `
+    <div class="dp-section">
+      <div class="dp-lbl">Статус</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+        <span class="corpse-row-dot ${dotClass}"></span>
+        ${c.statusText}
+      </div>
+    </div>
+
+    <div class="dp-section">
+      <div class="dp-lbl">Прогресс</div>
+      <div class="dp-progress">
+        <div class="dp-progress-row">
+          <span class="dp-progress-label">НВФ</span>
+          <div class="dp-progress-bar"><div class="dp-progress-fill" style="width:${c.nvfPct}%"></div></div>
+          <span class="dp-progress-value">${c.nvfPct}%</span>
+        </div>
+      </div>
+      <div class="dp-progress">
+        <div class="dp-progress-row">
+          <span class="dp-progress-label">Остекление</span>
+          <div class="dp-progress-bar"><div class="dp-progress-fill glz" style="width:${c.glz}%"></div></div>
+          <span class="dp-progress-value">${c.glz}%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dp-section">
+      <div class="dp-lbl">Документация</div>
+      <div class="dp-row"><span class="k">Шифр</span><span class="v">${c.code}</span></div>
+      <div class="dp-row"><span class="k">Ревизия</span><span class="v">${c.rev}</span></div>
+      <div class="dp-row"><span class="k">Листов</span><span class="v">${c.sheets}</span></div>
+      <div class="dp-row"><span class="k">Марок</span><span class="v">${c.marks}</span></div>
+    </div>
+
+    <div class="dp-section">
+      <div class="dp-lbl">Профиль</div>
+      <div class="dp-row"><span class="k">Наружный</span><span class="v" style="font-size:12px">${c.colorOuter}</span></div>
+      <div class="dp-row"><span class="k">Внутренний</span><span class="v">${c.colorInner}</span></div>
+    </div>
+
+    <div class="dp-section">
+      <div class="dp-lbl">Материалы</div>
+      <div class="dp-row"><span class="k">Плитка</span><span class="v">${fmt(c.tile)} м²</span></div>
+      <div class="dp-row"><span class="k">Композит</span><span class="v">${fmt(c.composite)} м²</span></div>
+      <div class="dp-row"><span class="k">Итого фасад</span><span class="v">${fmt(c.total)} м²</span></div>
+    </div>
+
+    <div class="dp-section">
+      <div class="dp-lbl">Действия</div>
+      <div class="dp-actions">
+        <button class="dp-btn primary" data-goto="fact">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <path d="M14 2v6h6"/>
+          </svg>
+          Факт выполнения
+        </button>
+        <button class="dp-btn" data-goto="deliveries">
+          Поставки
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function openDetail(cid) {
+  const panel = document.getElementById("detailPanel");
+  const overlay = document.getElementById("overlay");
+  if (!panel || !overlay) return;
+
+  detailOpenCorpse = cid;
+  renderDetailPanel(cid);
+  panel.classList.add("open");
+  overlay.classList.add("open");
+}
+
+function closeDetail() {
+  const panel = document.getElementById("detailPanel");
+  const overlay = document.getElementById("overlay");
+  if (!panel || !overlay) return;
+
+  detailOpenCorpse = null;
+  panel.classList.remove("open");
+  overlay.classList.remove("open");
+}
+
+// ============================================================
+//  РАСКРЫТИЕ КОРПУСА В ГАНТЕ
+// ============================================================
+function toggleCorp(rowEl) {
+  const corp = rowEl.closest(".gantt-corp");
+  if (corp) corp.classList.toggle("open");
+}
+
+// ============================================================
+//  КОНЕЦ ЧАСТИ 2/3
+//  Часть 3 — старые рендеры + роутер + init
+// ============================================================
+// ============================================================
+//  FacadeApp v4.1 - часть 3/3
+//  Старые рендеры, роутер, аккордеон, init
+// ============================================================
 
 // ============================================================
 //  DASHBOARD
@@ -457,8 +1104,8 @@ function renderDashboard() {
       <td class="num"><b>${fmt(c.total)}</b></td>
       <td class="num">
         <div style="display:flex;align-items:center;gap:8px;">
-          <div style="flex:1;height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;">
-            <div style="width:${prog}%;height:100%;background:linear-gradient(90deg,var(--blue),#5AC8FA);"></div>
+          <div style="flex:1;height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden;">
+            <div style="width:${prog}%;height:100%;background:linear-gradient(90deg,var(--blue),var(--teal));"></div>
           </div>
           <span style="font-weight:700;color:var(--blue);min-width:36px;text-align:right;">${prog}%</span>
         </div>
@@ -482,51 +1129,6 @@ function renderDashboard() {
 }
 
 // ============================================================
-//  CORPSES
-// ============================================================
-function renderCorpses() {
-  return Object.keys(CORPSES).sort().map(cid => {
-    const c = CORPSES[cid];
-    const prog = corpseProgress(cid);
-    const items = [
-      ["Этажность", `${c.floors} эт.`],
-      ["Высота", `${c.height} м`],
-      ["Плитка", `${fmt(c.tile)} м²`],
-      ["Композит", `${fmt(c.composite)} м²`],
-      ["Итого фасад", `${fmt(c.total)} м²`],
-      ["Кронштейны", `${fmt(c.brackets)} шт`],
-      ["Удлинители", `${fmt(c.extenders)} шт`],
-      ["Направляющие", `${fmt(c.guides)} м`],
-      ["Анкер клиновой", `${fmt(c.anchor_wedge)} шт`],
-      ["Анкер фасадный", `${fmt(c.anchor_facade)} шт`],
-      ["Заклёпки", `${fmt(c.rivets)} шт`],
-      ["Теплоизоляция", `${fmt(c.insulation)} м²`],
-    ];
-    const gridHtml = items.map(([k, v]) => `
-      <div class="corpse-item">
-        <div class="item-label">${k}</div>
-        <div class="item-value">${v}</div>
-      </div>
-    `).join("");
-
-    return `
-      <div class="corpse-card glass">
-        <div class="corpse-head">
-          <div class="corpse-title">Корпус ${cid}</div>
-          <div class="badge">Этап ${c.stage}</div>
-        </div>
-        <div class="corpse-code">АР3: ${c.ar3} &nbsp;·&nbsp; НВФ: ${c.nvf}</div>
-        <div class="corpse-progress">
-          <div class="corpse-progress-bar"><div class="corpse-progress-fill" style="width:${prog}%"></div></div>
-          <div class="corpse-progress-text">Выполнено: ${prog}%</div>
-        </div>
-        <div class="corpse-grid">${gridHtml}</div>
-      </div>
-    `;
-  }).join("");
-}
-
-// ============================================================
 //  MATERIALS
 // ============================================================
 function renderMaterialsHub() {
@@ -535,9 +1137,9 @@ function renderMaterialsHub() {
   const totalBr   = Object.values(CORPSES).reduce((s, c) => s + c.brackets, 0);
 
   const cards = [
-    { page: "mat-tile",  icon: "🎨", title: "Плитка",           sub: `${fmt(totalTile)} м²`,  color: "var(--green)" },
-    { page: "mat-comp",  icon: "🧱", title: "Композит",         sub: `${fmt(totalComp)} м²`,  color: "var(--orange)" },
-    { page: "mat-frame", icon: "🔩", title: "Каркас и крепёж",  sub: `${fmt(totalBr)} шт`,    color: "var(--purple)" },
+    { page: "mat-tile",  icon: "🎨", title: "Плитка",          sub: `${fmt(totalTile)} м²`, color: "var(--green)" },
+    { page: "mat-comp",  icon: "🧱", title: "Композит",        sub: `${fmt(totalComp)} м²`, color: "var(--orange)" },
+    { page: "mat-frame", icon: "🔩", title: "Каркас и крепёж", sub: `${fmt(totalBr)} шт`,   color: "var(--purple)" },
   ];
 
   const cardsHtml = cards.map(c => `
@@ -678,177 +1280,6 @@ function renderMaterialsFrame() {
 }
 
 // ============================================================
-//  SCHEDULE
-// ============================================================
-function renderSchedule() {
-  let minDate = null, maxDate = null;
-  WORK_SCHEDULE.forEach(([,, s, e]) => {
-    const ds = parseDate(s), de = parseDate(e);
-    if (!minDate || ds < minDate) minDate = ds;
-    if (!maxDate || de > maxDate) maxDate = de;
-  });
-  MILESTONES.forEach(m => {
-    const d = parseDate(m.date);
-    if (d < minDate) minDate = d;
-    if (d > maxDate) maxDate = d;
-  });
-
-  const minMonday = new Date(minDate);
-  const dayIdx = (minMonday.getDay() + 6) % 7;
-  minMonday.setDate(minMonday.getDate() - dayIdx);
-  const totalDays = Math.max(1, daysBetween(minMonday, maxDate) + 1);
-
-  const monthNames = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
-  const months = [];
-  const cursor = new Date(minMonday);
-  while (cursor <= maxDate) {
-    const mk = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
-    const last = months[months.length - 1];
-    if (last && last.key === mk) last.days++;
-    else months.push({ key: mk, name: `${monthNames[cursor.getMonth()]} ${String(cursor.getFullYear()).slice(2)}`, days: 1 });
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  const weeks = [];
-  const wc = new Date(minMonday);
-  const today = new Date();
-  while (wc <= maxDate) {
-    const wEnd = new Date(wc);
-    wEnd.setDate(wEnd.getDate() + 6);
-    const isCurrent = today >= wc && today <= wEnd;
-    weeks.push({
-      days: 7,
-      label: `${pad(wc.getDate())}.${pad(wc.getMonth() + 1)}–${pad(wEnd.getDate())}.${pad(wEnd.getMonth() + 1)}`,
-      isCurrent,
-    });
-    wc.setDate(wc.getDate() + 7);
-  }
-
-  const todayOffset = daysBetween(minMonday, today);
-  const todayPos = (todayOffset / totalDays) * 100;
-  const showTodayLine = todayOffset >= 0 && todayOffset <= totalDays;
-
-  const byCorpse = {};
-  WORK_SCHEDULE.forEach(row => {
-    const cid = row[0];
-    if (!byCorpse[cid]) byCorpse[cid] = [];
-    byCorpse[cid].push(row);
-  });
-  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
-
-  const summaryHtml = corpseOrder.map(cid => {
-    const prog = corpseProgress(cid);
-    return `
-      <div class="gantt-summary-card glass" data-scroll-to="corpse-${cid}">
-        <div class="gantt-summary-name">Корпус ${cid}</div>
-        <div class="gantt-summary-progress">
-          <div class="gantt-summary-bar">
-            <div class="gantt-summary-fill" style="width:${prog}%"></div>
-          </div>
-          <div class="gantt-summary-pct">${prog}%</div>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  const totalProg = projectProgress();
-
-  const rowsHtml = corpseOrder.map(cid => {
-    const rows = byCorpse[cid] || [];
-    const header = `
-      <div class="gantt-corpse-header glass" id="corpse-${cid}">
-        <span class="gantt-corpse-title">Корпус ${cid}</span>
-        <span class="gantt-corpse-meta">${CORPSES[cid].floors} эт. · ${CORPSES[cid].total} м² · <b style="color:var(--blue)">${corpseProgress(cid)}%</b></span>
-      </div>
-    `;
-    const stagesHtml = rows.map(([, stage, s, e, vol]) => {
-      const ds = parseDate(s), de = parseDate(e);
-      const left  = (daysBetween(minMonday, ds) / totalDays) * 100;
-      const width = Math.max(0.8, ((daysBetween(ds, de) + 1) / totalDays) * 100);
-      const color = STAGE_COLORS[stage] || "#8E8E93";
-      const factPct = getFact(cid, stage);
-
-      return `
-        <div class="gantt-row">
-          <div class="gantt-label">
-            ${stage}
-            <small>${s} → ${e} · ${vol}</small>
-          </div>
-          <div class="gantt-track">
-            <div class="gantt-bar" style="left:${left}%; width:${width}%; background:${color}; opacity:0.30;"></div>
-            <div class="gantt-bar gantt-fact" style="left:${left}%; width:${width * (factPct / 100)}%; background:${color};">
-              ${width * (factPct / 100) > 8 ? factPct + "%" : ""}
-            </div>
-          </div>
-        </div>
-      `;
-    }).join("");
-    return header + stagesHtml;
-  }).join("");
-
-  const milestoneLines = MILESTONES.filter(m => m.kind === "milestone").map(m => {
-    const d = parseDate(m.date);
-    const pos = (daysBetween(minMonday, d) / totalDays) * 100;
-    if (pos < 0 || pos > 100) return "";
-    return `<div class="milestone-line" style="left:calc(220px + (100% - 220px) * ${pos / 100});" title="${m.label} · ${m.date}"></div>`;
-  }).join("");
-
-  return `
-    <div class="home-fact-block glass" style="margin-bottom:16px;">
-      <div class="home-fact-head">
-        <div class="home-fact-title">📊 Общий прогресс проекта</div>
-        <div class="home-fact-total">${totalProg}%</div>
-      </div>
-      <div class="home-fact-total-bar">
-        <div class="home-fact-total-fill" style="width:${totalProg}%"></div>
-      </div>
-    </div>
-
-    <div class="gantt-summary">${summaryHtml}</div>
-
-    <div class="card glass" style="margin-bottom:16px;">
-      <div class="legend-title">Контрольные точки</div>
-      <div class="legend-row">
-        ${MILESTONES.filter(m => m.kind === "milestone").map(m => `
-          <span class="legend-item">
-            <span class="legend-dot" style="background:${m.color};"></span>${m.label} — <b>${m.date}</b>
-          </span>
-        `).join("")}
-      </div>
-      <div class="legend-title" style="margin-top:12px;">Прогресс</div>
-      <div class="legend-row">
-        <span class="legend-item"><span class="legend-bar plan"></span>План</span>
-        <span class="legend-item"><span class="legend-bar fact" style="background:var(--green)"></span>Факт выполнения</span>
-      </div>
-    </div>
-
-    <div class="gantt glass">
-      <div class="cal-header">
-        <div class="cal-corner"></div>
-        <div class="cal-months">${months.map(m => `<div class="cal-month" style="flex:${m.days}">${m.name}</div>`).join("")}</div>
-      </div>
-      <div class="cal-header cal-header-weeks">
-        <div class="cal-corner"></div>
-        <div class="cal-weeks">${weeks.map(w => `<div class="cal-week ${w.isCurrent ? 'cal-week-current' : ''}" style="flex:${w.days}">${w.label}</div>`).join("")}</div>
-      </div>
-
-      <div class="gantt-body">
-        ${rowsHtml}
-        ${showTodayLine ? `<div class="today-line" style="left:calc(220px + (100% - 220px) * ${todayPos / 100});" title="Сегодня"></div>` : ""}
-      </div>
-    </div>
-  `;
-}
-
-// ============================================================
-//  КОНЕЦ ЧАСТИ 2/3
-//  Продолжение — в части 3/3
-// ============================================================// ============================================================
-//  FacadeApp v3.0 - часть 3/3
-//  Факт, КТ, Поставки, Поставщики, роутер, экспорт, init
-// ============================================================
-
-// ============================================================
 //  FACT
 // ============================================================
 function renderFact() {
@@ -955,7 +1386,7 @@ function renderMilestones() {
           <div class="milestone-label">${m.label}</div>
           <div class="milestone-dates">
             <span class="milestone-date-plan ${isDone ? 'plan-struck' : ''}">${m.date}</span>
-            ${isDone ? `<span class="milestone-date-fact">✅ ${state.fact}</span>` : ""}
+            ${isDone ? `<span class="milestone-date-fact">✓ ${state.fact}</span>` : ""}
           </div>
         </div>
         ${isDone ? `<div class="milestone-check">✓</div>` : ""}
@@ -985,7 +1416,7 @@ function handleMilestoneClick(key) {
   if (state.done) delete MILESTONE_STATE[key];
   else MILESTONE_STATE[key] = { done: true, fact: nowStamp() };
   saveStore(KEY_MILESTONES, MILESTONE_STATE);
-  saveToCloud();  // Автосохранение в облако
+  saveToCloud();
   if (currentPage === "milestones" || currentPage === "home") showPage(currentPage);
 }
 
@@ -1079,7 +1510,7 @@ function renderDeliveries() {
   return `
     <div class="card glass" style="margin-bottom:16px; padding:16px 20px;">
       <div style="font-size:13px; color:var(--text-gray);">
-        💾 Данные сохраняются в облако автоматически. При вводе «Новой даты» плановая зачёркивается.
+        💾 Данные сохраняются в облако автоматически.
       </div>
     </div>
     ${cards}
@@ -1097,7 +1528,7 @@ function renderSuppliers() {
           <input class="supplier-input supplier-name-input" data-id="${s.id}" data-field="name"
                  value="${s.name || ''}" placeholder="Название" />
           <input class="supplier-input supplier-materials" data-id="${s.id}" data-field="materials"
-                 value="${s.materials || ''}" placeholder="Материалы (через запятую)" />
+                 value="${s.materials || ''}" placeholder="Материалы" />
         </div>
         <button class="supplier-delete" data-del="${s.id}" title="Удалить">🗑</button>
       </div>
@@ -1158,6 +1589,7 @@ const RENDERERS = {
   "mat-comp":  renderMaterialsComp,
   "mat-frame": renderMaterialsFrame,
   schedule:    renderSchedule,
+  glazing:     renderGlazing,
   fact:        renderFact,
   milestones:  renderMilestones,
   deliveries:  renderDeliveries,
@@ -1174,12 +1606,31 @@ function showPage(page) {
     crumb = `<div class="breadcrumb"><a href="#" data-goto="${meta.parent}">${parent.title}</a> <span>›</span> ${meta.title}</div>`;
   }
 
-  $("#pageTitle").textContent = meta.title;
-  $("#pageSub").textContent = meta.sub;
-  $("#content").innerHTML = crumb + RENDERERS[page]();
+  const pageTitle = $("#pageTitle");
+  const pageSub = $("#pageSub");
+  const content = $("#content");
+  if (pageTitle) pageTitle.textContent = meta.title;
+  if (pageSub) pageSub.textContent = meta.sub;
+  if (content) content.innerHTML = crumb + (RENDERERS[page] ? RENDERERS[page]() : "");
 
+  // Подсветка активного пункта в sidebar
   const rootPage = meta.parent || page;
-  $$(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.page === rootPage));
+  $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.page === rootPage || b.dataset.page === page));
+
+  // Подсветка активного раздела
+  $$(".nav-section").forEach(sec => {
+    const active = sec.querySelector(".nav-item.active, .nav-header.active");
+    sec.classList.toggle("active", !!active && !sec.querySelector(".nav-sub"));
+  });
+
+  // Обновляем прогресс-бары
+  requestAnimationFrame(() => {
+    $$(".corpse-row-fill, .flow .fill, .stage-progress .fill, .fact-progress-fill, .dp-progress-fill").forEach(el => {
+      const w = el.style.width;
+      el.style.width = "0";
+      setTimeout(() => { el.style.width = w; }, 50);
+    });
+  });
 }
 
 // ============================================================
@@ -1189,12 +1640,16 @@ function exportCSV() {
   let headers = [], rows = [], filename = "export.csv";
 
   if (currentPage === "home" || currentPage === "dashboard" || currentPage === "corpses") {
-    headers = ["Корпус", "Этаж", "Высота", "Этап", "Плитка м²", "Композит м²", "Итого м²", "Прогресс %"];
+    headers = ["Корпус", "Этаж", "Высота", "Этап", "Шифр", "НВФ %", "Остекление %", "Статус", "Плитка м²", "Композит м²", "Итого м²", "Прогресс %"];
     rows = Object.keys(CORPSES).sort().map(cid => {
       const c = CORPSES[cid];
-      return [cid, c.floors, c.height, c.stage, c.tile, c.composite, c.total, corpseProgress(cid)];
+      return [cid, c.floors, c.height, c.stage, c.code, c.nvfPct, c.glz, c.statusText, c.tile, c.composite, c.total, corpseProgress(cid)];
     });
     filename = "corpses.csv";
+  } else if (currentPage === "glazing") {
+    headers = ["Марка", "Корпус", "Тип", "Этап", "Габарит", "Кол-во", "Площадь м²", "Факт %", "Статус"];
+    rows = MARKS.map(m => [m.code, m.corp, m.type, m.stage, m.size, m.qty, m.area, m.fact, m.status]);
+    filename = "glazing.csv";
   } else if (currentPage === "mat-tile") {
     headers = ["Корпус", ...TILE_COLORS, "Всего"];
     rows = Object.keys(CORPSES).sort().map(cid => {
@@ -1284,9 +1739,10 @@ function exportCSV() {
 function applySearch(query) {
   const q = query.trim().toLowerCase();
   const container = $("#content");
+  if (!container) return;
   const clearAll = () => {
     $$("tr", container).forEach(tr => tr.style.display = "");
-    $$(".corpse-card, .gantt-row, .folder-card, .milestone-card, .delivery-card, .home-kt-row, .home-corpus, .fact-card, .fact-stage, .supplier-card, .gantt-summary-card", container).forEach(el => el.style.display = "");
+    $$(".corpse-card, .corpse-row, .gantt-row, .gantt-corp-row, .folder-card, .milestone-card, .delivery-card, .home-kt-row, .home-corpus, .fact-card, .fact-stage, .supplier-card, .gantt-summary-card, .mark, .flow", container).forEach(el => el.style.display = "");
   };
   if (!q) { clearAll(); return; }
   clearAll();
@@ -1297,7 +1753,8 @@ function applySearch(query) {
   };
   filterList("tbody tr");
   filterList(".corpse-card");
-  filterList(".gantt-row");
+  filterList(".corpse-row");
+  filterList(".gantt-corp-row");
   filterList(".folder-card");
   filterList(".milestone-card");
   filterList(".delivery-card");
@@ -1306,6 +1763,7 @@ function applySearch(query) {
   filterList(".fact-card");
   filterList(".supplier-card");
   filterList(".gantt-summary-card");
+  filterList(".mark");
 }
 
 // ============================================================
@@ -1315,26 +1773,90 @@ function toggleTheme() {
   const html = document.documentElement;
   const dark = html.getAttribute("data-theme") === "dark";
   html.setAttribute("data-theme", dark ? "light" : "dark");
-  $("#themeToggle").textContent = dark ? "🌙 Тёмная тема" : "☀️ Светлая тема";
+  const btn = $("#themeToggle");
+  if (btn) btn.textContent = dark ? "🌙 Тёмная тема" : "☀️ Светлая тема";
+}
+
+// ============================================================
+//  АККОРДЕОН SIDEBAR
+// ============================================================
+function initAccordion() {
+  $$(".nav-section").forEach(section => {
+    const header = section.querySelector(".nav-header");
+    const sub = section.querySelector(".nav-sub");
+    if (!sub) return; // Обзор — без подпунктов
+
+    header.addEventListener("click", (e) => {
+      e.stopPropagation();
+      section.classList.toggle("open");
+    });
+  });
+
+  // Клик по подпункту — смена страницы
+  $$(".nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const page = item.dataset.page;
+      if (page) showPage(page);
+    });
+  });
+
+  // Клик по «Обзор» (без подпунктов)
+  const overviewHeader = document.querySelector('[data-section="overview"] .nav-header');
+  if (overviewHeader) {
+    overviewHeader.addEventListener("click", () => {
+      showPage("home");
+    });
+  }
+}
+
+// ============================================================
+//  DETAIL PANEL — обработчики
+// ============================================================
+function initDetailPanel() {
+  const closeBtn = document.getElementById("dpClose");
+  const overlay = document.getElementById("overlay");
+  if (closeBtn) closeBtn.addEventListener("click", closeDetail);
+  if (overlay) overlay.addEventListener("click", closeDetail);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeDetail();
+  });
 }
 
 // ============================================================
 //  INIT
 // ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1. Загружаем данные из облака (если есть)
+  // 1. Обработчики формы логина
+  initLoginHandlers();
+
+  // 2. Проверяем авторизацию
+  const user = await checkAuth();
+  if (!user) {
+    showLoginScreen();
+    console.log("Не авторизован — показываю экран логина");
+    return;
+  }
+
+  // 3. Пользователь авторизован — показываем приложение
+  showAppScreen(user);
+  console.log("Авторизован как:", user.email);
+
+  // 4. Загружаем данные из облака
   await loadFromCloud();
 
-  // 2. Автосрез фактов (если материалов стало меньше)
+  // 5. Автосрез фактов
   autoTrimFacts();
 
-  // 3. Меню
-  $$(".nav-btn").forEach(btn => {
-    btn.addEventListener("click", () => showPage(btn.dataset.page));
-  });
+  // 6. Аккордеон sidebar
+  initAccordion();
 
-  // 4. Делегирование кликов
+  // 7. Detail Panel — обработчики закрытия
+  initDetailPanel();
+
+  // 8. Делегирование кликов
   document.body.addEventListener("click", (e) => {
+    // Удаление поставщика
     const del = e.target.closest("[data-del]");
     if (del) {
       e.preventDefault();
@@ -1347,6 +1869,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // Добавление поставщика
     if (e.target.closest("#addSupplier")) {
       const id = "supp_" + Date.now();
       SUPPLIERS_STATE.push({
@@ -1360,22 +1883,51 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const scrollTo = e.target.closest("[data-scroll-to]");
-    if (scrollTo) {
-      const el = document.getElementById(scrollTo.dataset.scrollTo);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Быстрый экспорт
+    if (e.target.closest("#quickExport")) {
+      exportCSV();
       return;
     }
 
-    const goto = e.target.closest("[data-goto]");
-    if (goto) { e.preventDefault(); showPage(goto.dataset.goto); return; }
+    // Клик по корпусу → detail panel
+    const corpseRow = e.target.closest("[data-corpse]");
+    if (corpseRow) {
+      const cid = corpseRow.dataset.corpse;
+      openDetail(cid);
+      return;
+    }
 
+    // Клик по корпусу в Ганте → раскрытие
+    const ganttRow = e.target.closest(".gantt-corp-row");
+    if (ganttRow) {
+      toggleCorp(ganttRow);
+      return;
+    }
+
+    // Клик по контрольной точке
     const kt = e.target.closest("[data-kt]");
     if (kt) { handleMilestoneClick(kt.dataset.kt); return; }
+
+    // Переход по data-goto
+    const goto = e.target.closest("[data-goto]");
+    if (goto) {
+      e.preventDefault();
+      showPage(goto.dataset.goto);
+      return;
+    }
+
+    // Клик по чипу (фильтр)
+    const chip = e.target.closest(".chip");
+    if (chip) {
+      chip.parentElement.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+      chip.classList.add("on");
+      return;
+    }
   });
 
-  // 5. Ввод
+  // 9. Ввод данных
   document.body.addEventListener("input", (e) => {
+    // Ввод в поставках
     const inp = e.target.closest(".inp");
     if (inp) {
       const idx = inp.dataset.idx;
@@ -1407,6 +1959,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // Ввод слайдера/числа факта
     const slider = e.target.closest(".fact-slider");
     const factInput = e.target.closest(".fact-input");
     if (slider || factInput) {
@@ -1443,6 +1996,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // Ввод в поставщиках
     const supInput = e.target.closest(".supplier-input");
     if (supInput) {
       const id = supInput.dataset.id;
@@ -1457,7 +2011,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // 6. Чекбоксы поставщиков
+  // 10. Чекбоксы поставщиков
   document.body.addEventListener("change", (e) => {
     const cb = e.target.closest("input[data-status]");
     if (cb) {
@@ -1473,13 +2027,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // 7. Кнопки
-  $("#globalSearch").addEventListener("input", (e) => applySearch(e.target.value));
-  $("#exportBtn").addEventListener("click", exportCSV);
-  $("#themeToggle").addEventListener("click", toggleTheme);
+  // 11. Кнопки в topbar
+  const globalSearch = $("#globalSearch");
+  const exportBtn = $("#exportBtn");
+  const themeToggle = $("#themeToggle");
+  if (globalSearch) globalSearch.addEventListener("input", (e) => applySearch(e.target.value));
+  if (exportBtn) exportBtn.addEventListener("click", exportCSV);
+  if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
 
-  // 8. Стартовая страница
+  // 12. Стартовая страница
   showPage("home");
 
-  console.log("%c✅ FacadeApp v3.0 запущен с облачной синхронизацией", "color:#007AFF; font-weight:bold; font-size:14px;");
+  console.log("%c✅ FacadeApp v4.1 запущен", "color:#007AFF; font-weight:bold; font-size:14px;");
 });
+
+// ============================================================
+//  КОНЕЦ ФАЙЛА app.js
+// ============================================================
