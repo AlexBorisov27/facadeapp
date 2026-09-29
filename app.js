@@ -1775,11 +1775,15 @@ function exportPDF() {
 
   // ─── Временный контейнер ───
   const container = document.createElement("div");
-  container.style.position = "fixed";
-  container.style.left = "-9999px";
-  container.style.top = "0";
-  container.innerHTML = reportHtml;
-  document.body.appendChild(container);
+container.style.position = "fixed";
+container.style.left = "-9999px";
+container.style.top = "0";
+container.style.width = "760px";
+container.style.background = "#FFFFFF";
+container.style.padding = "0";
+container.style.margin = "0";
+container.innerHTML = reportHtml.trim();
+document.body.appendChild(container);
 
   // ─── Имя файла ───
   const filename = `FacadeApp_Отчёт_${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}.pdf`;
@@ -1794,6 +1798,8 @@ function exportPDF() {
       useCORS: true,
       backgroundColor: "#FFFFFF",
       logging: false,
+          windowWidth: 794,
+    width: 794,
     },
     jsPDF: {
       unit: "mm",
@@ -1804,21 +1810,24 @@ function exportPDF() {
   };
 
   // ─── Генерация и скачивание ───
-  html2pdf()
-    .set(opt)
-    .from(container.firstElementChild)
-    .save()
-    .then(() => {
-      console.log("✅ PDF сгенерирован:", filename);
-      document.body.removeChild(container);
-    })
-    .catch((err) => {
-      console.error("Ошибка PDF:", err);
-      document.body.removeChild(container);
-      alert("Не удалось создать PDF: " + err.message);
-    });
-}
+ // Вынимаем отчёт из контейнера — html2pdf не должен видеть родителя
+const reportElement = container.firstElementChild;
+container.removeChild(reportElement);
 
+html2pdf()
+  .set(opt)
+  .from(reportElement)
+  .save()
+  .then(() => {
+    console.log("✅ PDF сгенерирован:", filename);
+    document.body.removeChild(container);
+  })
+  .catch((err) => {
+    console.error("Ошибка PDF:", err);
+    document.body.removeChild(container);
+    alert("Не удалось создать PDF: " + err.message);
+  });
+}
 function exportCSV() {
   let headers = [], rows = [], filename = "export.csv";
 

@@ -2786,8 +2786,11 @@ tbody tr.total-row td {
   background: #FFFFFF;
   padding: 40px 44px;
   width: 760px;
+  max-width: 760px;
   line-height: 1.5;
   box-sizing: border-box;
+  margin: 0 auto;
+  overflow: hidden;
 }
 
 .pdf-header {
