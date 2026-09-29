@@ -1636,6 +1636,189 @@ function showPage(page) {
 // ============================================================
 //  EXPORT CSV
 // ============================================================
+// ============================================================
+//  ЭКСПОРТ PDF — отчёт для руководителя
+// ============================================================
+function exportPDF() {
+  // Проверяем, что библиотека загрузилась
+  if (typeof html2pdf === "undefined") {
+    alert("Библиотека html2pdf не загружена. Проверьте интернет-соединение и обновите страницу.");
+    return;
+  }
+
+  const today = new Date();
+  const dateStr = today.toLocaleDateString("ru-RU", {
+    day: "numeric", month: "long", year: "numeric"
+  });
+
+  // ─── Потоки ───
+  const nvf = FLOW_SUMMARY.nvf;
+  const glz = FLOW_SUMMARY.glz;
+  const totalPct = Math.round((nvf.fact + glz.fact) / 2);
+
+  const statusClass = (s) => s === "ok" ? "ok" : s === "warn" ? "warn" : "risk";
+
+  // ─── Проблемные корпуса ───
+  const problems = [];
+  Object.keys(CORPSES).sort().forEach(cid => {
+    const c = CORPSES[cid];
+    if (c.status === "risk" || c.status === "warn") {
+      problems.push({
+        id: cid,
+        status: c.status,
+        statusText: c.statusText,
+        detail: `НВФ ${c.nvfPct}% · Остекление ${c.glz}% · ${c.deviation}`
+      });
+    }
+  });
+
+  // ─── Список корпусов ───
+  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
+  const corpseRows = corpseOrder.map(cid => {
+    const c = CORPSES[cid];
+    const avg = Math.round((c.nvfPct + c.glz) / 2);
+    return `
+      <div class="pdf-corpse-row">
+        <div class="pdf-corpse-id">${cid}</div>
+        <div class="pdf-corpse-status ${c.status}">${c.statusText}</div>
+        <div class="pdf-corpse-bar">
+          <div class="pdf-corpse-fill ${c.status}" style="width:${avg}%"></div>
+        </div>
+        <div class="pdf-corpse-pct">${avg}%</div>
+      </div>
+    `;
+  }).join("");
+
+  // ─── Ближайшие контрольные точки ───
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const upcoming = MILESTONES
+    .filter(m => !(MILESTONE_STATE[milestoneKey(m)]?.done))
+    .map(m => ({ ...m, dateObj: parseDate(m.date) }))
+    .filter(m => m.dateObj >= todayMidnight)
+    .sort((a, b) => a.dateObj - b.dateObj)
+    .slice(0, 5);
+
+  const milestoneRows = upcoming.length ? upcoming.map(m => `
+    <div class="pdf-milestone">
+      <div class="pdf-milestone-date">${m.date}</div>
+      <div class="pdf-milestone-label">${m.label}</div>
+    </div>
+  `).join("") : `<div class="pdf-milestone">Все контрольные точки пройдены</div>`;
+
+  // ─── Проблемы ───
+  const problemsHtml = problems.length
+    ? problems.map(p => `
+        <div class="pdf-alert ${p.status}">
+          <div class="pdf-alert-icon"></div>
+          <div class="pdf-alert-text">
+            <b>Корпус ${p.id}</b> — ${p.statusText}. ${p.detail}
+          </div>
+        </div>
+      `).join("")
+    : `<div class="pdf-alert" style="border-left-color:#34C759;background:#F0FBF4;">
+        <div class="pdf-alert-icon" style="background:#34C759;"></div>
+        <div class="pdf-alert-text">Все корпуса в графике</div>
+       </div>`;
+
+  // ─── Финальный HTML отчёта ───
+  const reportHtml = `
+    <div class="pdf-report">
+      <div class="pdf-header">
+        <div>
+          <div class="pdf-title">FacadeApp · Отчёт по проекту</div>
+          <div class="pdf-subtitle">Кавказский б-р, з/у 51/3 · 7 корпусов · 2 этапа</div>
+        </div>
+        <div class="pdf-date">${dateStr}</div>
+      </div>
+
+      <div class="pdf-section">
+        <div class="pdf-section-title">Общий прогресс</div>
+        <div class="pdf-kpi-grid">
+          <div class="pdf-kpi">
+            <div class="pdf-kpi-label">НВФ</div>
+            <div class="pdf-kpi-value ${statusClass(nvf.status)}">${nvf.fact}%</div>
+            <div class="pdf-kpi-meta ${statusClass(nvf.status)}">${nvf.deviation} · план ${nvf.plan}%</div>
+          </div>
+          <div class="pdf-kpi">
+            <div class="pdf-kpi-label">Остекление</div>
+            <div class="pdf-kpi-value ${statusClass(glz.status)}">${glz.fact}%</div>
+            <div class="pdf-kpi-meta ${statusClass(glz.status)}">${glz.deviation} · план ${glz.plan}%</div>
+          </div>
+          <div class="pdf-kpi">
+            <div class="pdf-kpi-label">Всего</div>
+            <div class="pdf-kpi-value" style="color:#007AFF">${totalPct}%</div>
+            <div class="pdf-kpi-meta" style="color:#8E8E93">по двум потокам</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pdf-section">
+        <div class="pdf-section-title">Требует внимания (${problems.length})</div>
+        <div class="pdf-alerts">${problemsHtml}</div>
+      </div>
+
+      <div class="pdf-section">
+        <div class="pdf-section-title">Статус по корпусам</div>
+        <div class="pdf-corpse-list">${corpseRows}</div>
+      </div>
+
+      <div class="pdf-section">
+        <div class="pdf-section-title">Ближайшие контрольные точки (${upcoming.length})</div>
+        <div class="pdf-milestones">${milestoneRows}</div>
+      </div>
+
+      <div class="pdf-footer">
+        Сгенерировано ${dateStr} · FacadeApp v4.1 · Симплекс Фасад
+      </div>
+    </div>
+  `;
+
+  // ─── Временный контейнер ───
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
+  container.style.top = "0";
+  container.innerHTML = reportHtml;
+  document.body.appendChild(container);
+
+  // ─── Имя файла ───
+  const filename = `FacadeApp_Отчёт_${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}.pdf`;
+
+  // ─── Настройки PDF ───
+  const opt = {
+    margin: 0,
+    filename: filename,
+    image: { type: "jpeg", quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#FFFFFF",
+      logging: false,
+    },
+    jsPDF: {
+      unit: "mm",
+      format: "a4",
+      orientation: "portrait",
+    },
+    pagebreak: { mode: ["avoid-all", "css"] },
+  };
+
+  // ─── Генерация и скачивание ───
+  html2pdf()
+    .set(opt)
+    .from(container.firstElementChild)
+    .save()
+    .then(() => {
+      console.log("✅ PDF сгенерирован:", filename);
+      document.body.removeChild(container);
+    })
+    .catch((err) => {
+      console.error("Ошибка PDF:", err);
+      document.body.removeChild(container);
+      alert("Не удалось создать PDF: " + err.message);
+    });
+}
+
 function exportCSV() {
   let headers = [], rows = [], filename = "export.csv";
 
@@ -2028,12 +2211,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // 11. Кнопки в topbar
-  const globalSearch = $("#globalSearch");
-  const exportBtn = $("#exportBtn");
-  const themeToggle = $("#themeToggle");
-  if (globalSearch) globalSearch.addEventListener("input", (e) => applySearch(e.target.value));
-  if (exportBtn) exportBtn.addEventListener("click", exportCSV);
-  if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
+     const globalSearch = $("#globalSearch");
+    const exportBtn = $("#exportBtn");
+    const exportPdfBtn = $("#exportPdfBtn");
+    const themeToggle = $("#themeToggle");
+    if (globalSearch) globalSearch.addEventListener("input", (e) => applySearch(e.target.value));
+    if (exportBtn) exportBtn.addEventListener("click", exportCSV);
+    if (exportPdfBtn) exportPdfBtn.addEventListener("click", exportPDF);
+    if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
 
   // 12. Стартовая страница
   showPage("home");

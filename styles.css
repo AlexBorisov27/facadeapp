@@ -2754,3 +2754,206 @@ tbody tr.total-row td {
 .login-tab-indicator.right {
   transform: translateX(calc(100% + 2px));
 }
+/* ═══════════ КНОПКА PDF ═══════════ */
+.btn-pdf {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+.btn-pdf:hover {
+  background: var(--glass-strong);
+  transform: translateY(-1px);
+}
+.btn-pdf:active {
+  transform: translateY(0) scale(0.98);
+}
+.btn-pdf svg { display: block; }
+
+/* ═══════════ PDF-ОТЧЁТ (невидим на сайте, используется только для генерации) ═══════════ */
+.pdf-report {
+  font-family: -apple-system, 'SF Pro Text', 'Segoe UI', Arial, sans-serif;
+  color: #1C1C1E;
+  background: #FFFFFF;
+  padding: 40px 44px;
+  width: 760px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.pdf-header {
+  border-bottom: 2px solid #007AFF;
+  padding-bottom: 16px;
+  margin-bottom: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.pdf-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+.pdf-subtitle {
+  font-size: 13px;
+  color: #8E8E93;
+}
+.pdf-date {
+  font-size: 12px;
+  color: #8E8E93;
+  text-align: right;
+}
+
+.pdf-section { margin-bottom: 28px; }
+.pdf-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8E8E93;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #E5E5EA;
+}
+
+.pdf-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.pdf-kpi {
+  border: 1px solid #E5E5EA;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #F9F9FB;
+}
+.pdf-kpi-label {
+  font-size: 11px;
+  color: #8E8E93;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.pdf-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+.pdf-kpi-value.ok   { color: #34C759; }
+.pdf-kpi-value.warn { color: #FF9500; }
+.pdf-kpi-value.risk { color: #FF3B30; }
+.pdf-kpi-meta {
+  font-size: 11px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.pdf-kpi-meta.ok   { color: #34C759; }
+.pdf-kpi-meta.warn { color: #FF9500; }
+.pdf-kpi-meta.risk { color: #FF3B30; }
+
+.pdf-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pdf-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-left: 3px solid #FF9500;
+  background: #FFF8F0;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.pdf-alert.risk {
+  border-left-color: #FF3B30;
+  background: #FFF2F1;
+}
+.pdf-alert-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF9500;
+  flex-shrink: 0;
+}
+.pdf-alert.risk .pdf-alert-icon { background: #FF3B30; }
+.pdf-alert-text b { font-weight: 700; }
+
+.pdf-corpse-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pdf-corpse-row {
+  display: grid;
+  grid-template-columns: 60px 100px 1fr 60px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #F2F2F7;
+  font-size: 13px;
+}
+.pdf-corpse-row:last-child { border-bottom: none; }
+.pdf-corpse-id { font-weight: 700; }
+.pdf-corpse-status { font-size: 12px; font-weight: 600; }
+.pdf-corpse-status.ok     { color: #34C759; }
+.pdf-corpse-status.warn   { color: #FF9500; }
+.pdf-corpse-status.risk   { color: #FF3B30; }
+.pdf-corpse-status.future { color: #5AC8FA; }
+.pdf-corpse-bar {
+  height: 6px;
+  background: #F2F2F7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pdf-corpse-fill { height: 100%; border-radius: 3px; }
+.pdf-corpse-fill.ok     { background: #34C759; }
+.pdf-corpse-fill.warn   { background: #FF9500; }
+.pdf-corpse-fill.risk   { background: #FF3B30; }
+.pdf-corpse-fill.future { background: #5AC8FA; }
+.pdf-corpse-pct {
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdf-milestones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.pdf-milestone {
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+}
+.pdf-milestone-date {
+  font-weight: 600;
+  color: #007AFF;
+  min-width: 90px;
+  font-variant-numeric: tabular-nums;
+}
+.pdf-milestone-label { color: #1C1C1E; }
+
+.pdf-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #E5E5EA;
+  font-size: 11px;
+  color: #8E8E93;
+  text-align: center;
+}

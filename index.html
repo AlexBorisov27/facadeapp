@@ -236,7 +236,14 @@
             </div>
           </div>
 
-          <button id="exportBtn" class="btn btn-primary">⬇ Экспорт CSV</button>
+          <button id="exportPdfBtn" class="btn btn-pdf" title="Отчёт для руководителя (PDF)">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+    <path d="M14 2v6h6"/>
+  </svg>
+  PDF
+</button>
+<button id="exportBtn" class="btn btn-primary">⬇ Экспорт CSV</button>
         </div>
       </header>
 
@@ -261,13 +268,15 @@
 
   <!-- ═══════════ SUPABASE SDK ═══════════ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
    window.supabase = window.supabase.createClient(
     "https://dcwmeltcrizsaalxvrlk.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjd21lbHRjcml6c2FhbHh2cmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODY3OTYsImV4cCI6MjEwNTc2Mjc5Nn0.chhVffiuHrMjjfwaf60twSLijCgZnh_-FUdUoYoCl6E"
   );
   </script>
-
+<!-- html2pdf для экспорта в PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
   <script>
