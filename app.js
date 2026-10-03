@@ -896,6 +896,119 @@ function renderSchedule() {
   `;
 }
 
+
+// ============================================================
+//  ЭТАП 3 — НОВЫЙ «График работ» (по типам этажей)
+// ============================================================
+function renderScheduleV2() {
+  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
+
+  // Функция для одной работы внутри типа этажа
+  const renderWorkRow = (corpse, type, work) => {
+    const prog = workProgress(corpse, type, work.id);
+    
+    let statusClass = "future";
+    if (prog >= 100) statusClass = "ok";
+    else if (prog >= 50) statusClass = "ok";
+    else if (prog > 0) statusClass = "warn";
+    
+    // Раскрываемые подработы
+    const subworksHtml = work.subworks.map(sub => {
+      const subProg = subworkProgress(corpse, type, work.id, sub.id);
+      let subStatus = "future";
+      if (subProg >= 100) subStatus = "ok";
+      else if (subProg > 0) subStatus = "warn";
+      
+      return `
+        <div class="subwork-row">
+          <div class="subwork-name">${sub.name}</div>
+          <div class="subwork-progress">
+            <div class="subwork-bar">
+              <div class="subwork-fill ${subStatus}" style="width:${subProg}%"></div>
+            </div>
+          </div>
+          <div class="subwork-pct">${subProg}%</div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="work-block">
+        <div class="work-header">
+          <div class="work-name">${work.name}</div>
+          <div class="work-progress-wrap">
+            <div class="work-bar">
+              <div class="work-fill ${statusClass}" style="width:${prog}%"></div>
+            </div>
+            <div class="work-pct">${prog}%</div>
+          </div>
+        </div>
+        ${subworksHtml ? `<div class="subworks">${subworksHtml}</div>` : ""}
+      </div>
+    `;
+  };
+
+  // Рендер корпуса
+  const corpseHtml = corpseOrder.map(cid => {
+    const c = CORPSES[cid];
+    const dotClass = c.status === "ok" ? "" : c.status;
+    
+    const typicalHtml = WORK_TEMPLATE.typical.works
+      .map(w => renderWorkRow(cid, "typical", w)).join("");
+    
+    const firstFloorHtml = WORK_TEMPLATE.firstFloor.works
+      .map(w => renderWorkRow(cid, "firstFloor", w)).join("");
+    
+    const typicalProg = typeProgress(cid, "typical");
+    const firstProg = typeProgress(cid, "firstFloor");
+    
+    return `
+      <div class="schedule-corpse">
+        <div class="schedule-corpse-head">
+          <div class="schedule-corpse-title">
+            <span class="corpse-row-dot ${dotClass}"></span>
+            Корпус ${cid}
+          </div>
+          <div class="schedule-corpse-meta">
+            ${c.floors} · ${fmt(c.total)} м² · 
+            <b>Тип: ${typicalProg}%</b> · 
+            <b>1 эт: ${firstProg}%</b>
+          </div>
+        </div>
+        
+        <div class="schedule-section">
+          <div class="schedule-section-title">
+            🏢 Типовые этажи (2+)
+            <span class="schedule-section-pct">${typicalProg}%</span>
+          </div>
+          <div class="schedule-works">${typicalHtml}</div>
+        </div>
+        
+        <div class="schedule-section">
+          <div class="schedule-section-title">
+            🏬 1-й этаж
+            <span class="schedule-section-pct">${firstProg}%</span>
+          </div>
+          <div class="schedule-works">${firstFloorHtml}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="schedule-v2">
+      <div class="schedule-header-card">
+        <h2 class="schedule-header-title">График работ</h2>
+        <div class="schedule-header-sub">
+          Работы разделены по типам этажей · Прогресс считается по подработам
+        </div>
+      </div>
+      
+      ${corpseHtml}
+    </div>
+  `;
+}
+
 // ============================================================
 //  ОСТЕКЛЕНИЕ — карточки марок
 // ============================================================
@@ -1588,7 +1701,7 @@ const RENDERERS = {
   "mat-tile":  renderMaterialsTile,
   "mat-comp":  renderMaterialsComp,
   "mat-frame": renderMaterialsFrame,
-  schedule:    renderSchedule,
+  schedule:    renderScheduleV2,
   glazing:     renderGlazing,
   fact:        renderFact,
   milestones:  renderMilestones,

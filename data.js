@@ -411,3 +411,214 @@ const GANTT_DATA = {
     ]},
   },
 };
+
+
+// ============================================================
+//  ЭТАП 3 — Новая структура работ
+//  (добавлено поверх старой версии, старая остаётся)
+// ============================================================
+
+
+// ═══════════════════════════════════════════════════════════════
+//  ШАБЛОН РАБОТ — одинаковый для всех корпусов
+// ═══════════════════════════════════════════════════════════════
+const WORK_TEMPLATE = {
+  typical: {
+    id: "typical",
+    label: "Типовые этажи",
+    sublabel: "Этажи 2 и выше",
+    works: [
+      {
+        id: "panels",
+        name: "Навесные панели",
+        subworks: [
+          { id: "panels-mount", name: "Монтаж" },
+          { id: "panels-weld",  name: "Разварка" },
+          { id: "panels-clean", name: "Зачистка" },
+        ],
+      },
+      {
+        id: "pvh",
+        name: "Остекление ПВХ",
+        subworks: [
+          { id: "pvh-windows", name: "Монтаж окон" },
+        ],
+      },
+      {
+        id: "alum-typical",
+        name: "Остекление алюминиевое",
+        subworks: [
+          { id: "alum-typical-mount", name: "Монтаж" },
+        ],
+      },
+      {
+        id: "nvf-typical",
+        name: "НВФ",
+        subworks: [
+          { id: "nvf-brackets",   name: "Монтаж кронштейнов" },
+          { id: "nvf-insulation", name: "Монтаж утеплителя" },
+          { id: "nvf-guides",     name: "Монтаж направляющих" },
+          { id: "nvf-tiles",      name: "Монтаж плитки" },
+          { id: "nvf-grout",      name: "Затирка швов" },
+        ],
+      },
+      {
+        id: "accept-typical",
+        name: "Приёмка СК (типовые)",
+        isAcceptance: true,
+        subworks: [],
+      },
+    ],
+  },
+  firstFloor: {
+    id: "firstFloor",
+    label: "1-й этаж",
+    sublabel: "",
+    works: [
+      {
+        id: "alum-1f",
+        name: "Остекление алюминиевое (витражи)",
+        subworks: [
+          { id: "alum-1f-mount", name: "Монтаж витражей" },
+        ],
+      },
+      {
+        id: "nvf-1f",
+        name: "НВФ",
+        subworks: [
+          { id: "nvf-1f-brackets",   name: "Монтаж кронштейнов" },
+          { id: "nvf-1f-insulation", name: "Монтаж утеплителя" },
+          { id: "nvf-1f-guides",     name: "Монтаж направляющих" },
+          { id: "nvf-1f-tiles",      name: "Монтаж плитки" },
+          { id: "nvf-1f-grout",      name: "Затирка швов" },
+        ],
+      },
+      {
+        id: "accept-1f",
+        name: "Приёмка СК (1-й этаж)",
+        isAcceptance: true,
+        subworks: [],
+      },
+    ],
+  },
+};
+
+
+// ═══════════════════════════════════════════════════════════════
+//  ОБЪЁМЫ РАБОТ ПО КОРПУСАМ
+//  Пока пустые — администратор заполнит через интерфейс
+//  Ключ: "корпус.тип.работа.подработа" → { plan, arrived, unit, start, end }
+// ═══════════════════════════════════════════════════════════════
+const CORPSES_WORKS = {
+  "3.1": {},
+  "3.2": {},
+  "3.3": {},
+  "3.4": {},
+  "3.5": {},
+  "3.6": {},
+  "3.7": {},
+};
+
+
+// ═══════════════════════════════════════════════════════════════
+//  ФАКТЫ ВЫПОЛНЕНИЯ ПО ПОДРАБОТАМ
+//  Ключ: "корпус.тип.работа.подработа" → процент (0–100)
+// ═══════════════════════════════════════════════════════════════
+const FACTS_V2 = {
+  "3.1": {},
+  "3.2": {},
+  "3.3": {},
+  "3.4": {},
+  "3.5": {},
+  "3.6": {},
+  "3.7": {},
+};
+
+
+// ═══════════════════════════════════════════════════════════════
+//  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ НОВОЙ СТРУКТУРЫ
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Возвращает массив всех подработ для данного типа этажа
+ * Например: [ {type, workId, subId, workName, subName}, ... ]
+ */
+function getAllSubworks(type) {
+  const tpl = WORK_TEMPLATE[type];
+  if (!tpl) return [];
+  const result = [];
+  tpl.works.forEach(work => {
+    work.subworks.forEach(sub => {
+      result.push({
+        type,
+        workId: work.id,
+        subId: sub.id,
+        workName: work.name,
+        subName: sub.name,
+      });
+    });
+  });
+  return result;
+}
+
+/**
+ * Возвращает ключ для хранения данных
+ * Пример: "3.6.typical.nvf.nvf-tiles"
+ */
+function workKey(corpse, type, workId, subId) {
+  return `${corpse}.${type}.${workId}.${subId}`;
+}
+
+/**
+ * Прогресс одной подработы корпуса (0–100)
+ */
+function subworkProgress(corpse, type, workId, subId) {
+  return FACTS_V2[corpse]?.[`${type}.${workId}.${subId}`] || 0;
+}
+
+/**
+ * Прогресс одной работы (среднее по подработам)
+ */
+function workProgress(corpse, type, workId) {
+  const tpl = WORK_TEMPLATE[type];
+  if (!tpl) return 0;
+  const work = tpl.works.find(w => w.id === workId);
+  if (!work || !work.subworks.length) return 0;
+  
+  const sum = work.subworks.reduce((acc, sub) => {
+    return acc + subworkProgress(corpse, type, workId, sub.id);
+  }, 0);
+  return Math.round(sum / work.subworks.length);
+}
+
+/**
+ * Прогресс типа этажа (среднее по всем работам)
+ */
+function typeProgress(corpse, type) {
+  const tpl = WORK_TEMPLATE[type];
+  if (!tpl) return 0;
+  const workProgresses = tpl.works.map(w => workProgress(corpse, type, w.id));
+  if (!workProgresses.length) return 0;
+  const sum = workProgresses.reduce((a, b) => a + b, 0);
+  return Math.round(sum / workProgresses.length);
+}
+
+/**
+ * Общий прогресс корпуса (среднее между типовыми и 1-м этажом)
+ */
+function corpseProgressV2(corpse) {
+  const typical = typeProgress(corpse, "typical");
+  const first = typeProgress(corpse, "firstFloor");
+  const parts = [typical, first].filter(v => v > 0);
+  if (!parts.length) return 0;
+  const sum = parts.reduce((a, b) => a + b, 0);
+  return Math.round(sum / parts.length);
+}
+
+/**
+ * Установить значение подработы (для ввода)
+ */
+function setSubworkProgress(corpse, type, workId, subId, value) {
+  if (!FACTS_V2[corpse]) FACTS_V2[corpse] = {};
+  FACTS_V2[corpse][`${type}.${workId}.${subId}`] = Math.max(0, Math.min(100, value));
+}
