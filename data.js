@@ -6,81 +6,163 @@
 // --- Корпуса ---
 const CORPSES = {
   "3.1": {
+    // Основные
     height: 70.8, floors: 23, stage: "№2",
     ar3: "132/24-ГК-РД-1-АР3", nvf: "SF 09/25-37",
     start: "01.03.2027", end: "30.04.2027",
-    tile: 1288.0, composite: 0.0, total: 1288.0, insulation: 2310,
+
+    // Материалы
+    tile: 1288.0, composite: 0.0, total: 1288.0,
+    insulation: 2310,
+
+    // Каркас и крепёж
     brackets: 5103, extenders: 4899, guides: 947,
     anchor_wedge: 204, anchor_facade: 5049, rivets: 51080,
-    code: "ПрТ-0401ПВХ", rev: "Изм.1 (08.09.25)",
-    nvfPct: 20, glz: 32, status: "warn", statusText: "Отстаём",
-    sheets: 48, marks: 26, colorOuter: "NCS S 3020-Y80R", colorInner: "RAL 9016", deviation: "−4 дн",
+
+    // НОВЫЕ ПОЛЯ — для премиум-интерфейса
+    code: "ПрТ-0401ПВХ",
+    rev: "Изм.1 (08.09.25)",
+    nvfPct: 20,          // % готовности НВФ
+    glz: 32,             // % готовности остекления
+    status: "warn",      // ok / warn / risk / future
+    statusText: "Отстаём",
+    sheets: 48,
+    marks: 26,
+    colorOuter: "NCS S 3020-Y80R",
+    colorInner: "RAL 9016",
+    deviation: "−4 дн",
   },
   "3.2": {
     height: 70.8, floors: 23, stage: "№2",
     ar3: "132/24-ГК-РД-2-АР3", nvf: "SF 04/26-39",
     start: "01.03.2027", end: "30.04.2027",
-    tile: 1238.0, composite: 0.0, total: 1238.0, insulation: 2310,
+
+    tile: 1238.0, composite: 0.0, total: 1238.0,
+    insulation: 2310,
     brackets: 5103, extenders: 4899, guides: 947,
     anchor_wedge: 204, anchor_facade: 5049, rivets: 51080,
-    code: "ПрТ-0402ПВХ", rev: "Изм.1 (08.09.25)",
-    nvfPct: 35, glz: 41, status: "ok", statusText: "В графике",
-    sheets: 52, marks: 34, colorOuter: "NCS S 3020-Y80R", colorInner: "RAL 9016", deviation: "+1 дн",
+
+    code: "ПрТ-0402ПВХ",
+    rev: "Изм.1 (08.09.25)",
+    nvfPct: 35,
+    glz: 41,
+    status: "ok",
+    statusText: "В графике",
+    sheets: 52,
+    marks: 34,
+    colorOuter: "NCS S 3020-Y80R",
+    colorInner: "RAL 9016",
+    deviation: "+1 дн",
   },
   "3.3": {
     height: 70.8, floors: 23, stage: "№2",
     ar3: "132/24-ГК-РД-3-АР3", nvf: "SF 08/26-41",
     start: "01.03.2027", end: "30.04.2027",
-    tile: 1239.0, composite: 0.0, total: 1239.0, insulation: 2210,
+
+    tile: 1239.0, composite: 0.0, total: 1239.0,
+    insulation: 2210,
     brackets: 5031, extenders: 4778, guides: 908,
     anchor_wedge: 211, anchor_facade: 4820, rivets: 49354,
-    code: "ПрТ-0403ПВХ", rev: "Изм.1 (08.09.25)",
-    nvfPct: 55, glz: 38, status: "ok", statusText: "В графике",
-    sheets: 36, marks: 18, colorOuter: "NCS S 3020-Y80R", colorInner: "RAL 9016", deviation: "0 дн",
+
+    code: "ПрТ-0403ПВХ",
+    rev: "Изм.1 (08.09.25)",
+    nvfPct: 55,
+    glz: 38,
+    status: "ok",
+    statusText: "В графике",
+    sheets: 36,
+    marks: 18,
+    colorOuter: "NCS S 3020-Y80R",
+    colorInner: "RAL 9016",
+    deviation: "0 дн",
   },
   "3.4": {
     height: 29.8, floors: 9, stage: "№1",
     ar3: "132/24-ГК-РД-4-АР3", nvf: "—",
     start: "01.11.2026", end: "30.04.2027",
-    tile: 424.0, composite: 0.0, total: 424.0, insulation: 1230,
+
+    tile: 424.0, composite: 0.0, total: 424.0,
+    insulation: 1230,
     brackets: 510, extenders: 0, guides: 200,
     anchor_wedge: 0, anchor_facade: 510, rivets: 8500,
-    code: "ПрТ-0404ПВХ", rev: "—",
-    nvfPct: 42, glz: 68, status: "ok", statusText: "В графике",
-    sheets: 21, marks: 21, colorOuter: "NCS S 2005-R30B", colorInner: "RAL 9016", deviation: "+2 дн",
+
+    code: "ПрТ-0404ПВХ",
+    rev: "—",
+    nvfPct: 42,
+    glz: 68,
+    status: "ok",
+    statusText: "В графике",
+    sheets: 21,
+    marks: 21,
+    colorOuter: "NCS S 2005-R30B",
+    colorInner: "RAL 9016",
+    deviation: "+2 дн",
   },
   "3.5": {
     height: 73.5, floors: 24, stage: "№1",
     ar3: "132/24-ГК-РД-5-АР3", nvf: "—",
     start: "01.12.2026", end: "04.09.2027",
-    tile: 1072.0, composite: 210.0, total: 1282.0, insulation: 1155,
+
+    tile: 1072.0, composite: 210.0, total: 1282.0,
+    insulation: 1155,
     brackets: 9500, extenders: 0, guides: 1500,
     anchor_wedge: 0, anchor_facade: 9500, rivets: 15000,
-    code: "ПрТ-0405ПВХ", rev: "Изм.1 (08.10.25)",
-    nvfPct: 52, glz: 55, status: "ok", statusText: "В графике",
-    sheets: 57, marks: 53, colorOuter: "NCS S 4502-R", colorInner: "RAL 9016", deviation: "+1 дн",
+
+    code: "ПрТ-0405ПВХ",
+    rev: "Изм.1 (08.10.25)",
+    nvfPct: 52,
+    glz: 55,
+    status: "ok",
+    statusText: "В графике",
+    sheets: 57,
+    marks: 53,
+    colorOuter: "NCS S 4502-R",
+    colorInner: "RAL 9016",
+    deviation: "+1 дн",
   },
   "3.6": {
     height: 100.0, floors: 32, stage: "№1",
     ar3: "SF 09/25-36", nvf: "—",
     start: "15.10.2026", end: "05.09.2027",
-    tile: 2899.0, composite: 0.0, total: 2899.0, insulation: 623,
+
+    tile: 2899.0, composite: 0.0, total: 2899.0,
+    insulation: 623,
     brackets: 9933, extenders: 1797, guides: 2215,
     anchor_wedge: 8204, anchor_facade: 2319, rivets: 122685,
-    code: "ПрТ-0406ПВХ", rev: "Изм.1+2",
-    nvfPct: 22, glz: 48, status: "risk", statusText: "Критично",
-    sheets: 72, marks: 88, colorOuter: "NCS S 4030-Y90R", colorInner: "RAL 9016", deviation: "−6 дн",
+
+    code: "ПрТ-0406ПВХ",
+    rev: "Изм.1+2",
+    nvfPct: 22,
+    glz: 48,
+    status: "risk",
+    statusText: "Критично",
+    sheets: 72,
+    marks: 88,
+    colorOuter: "NCS S 4030-Y90R",
+    colorInner: "RAL 9016",
+    deviation: "−6 дн",
   },
   "3.7": {
     height: 22.5, floors: 7, stage: "№2",
     ar3: "132/24-ГК-РД-7-АР3", nvf: "—",
     start: "20.10.2026", end: "30.04.2027",
-    tile: 566.0, composite: 90.0, total: 656.0, insulation: 230,
+
+    tile: 566.0, composite: 90.0, total: 656.0,
+    insulation: 230,
     brackets: 350, extenders: 0, guides: 150,
     anchor_wedge: 0, anchor_facade: 350, rivets: 5000,
-    code: "ПрТ-0407ПВХ", rev: "Изм.2 (30.12.25)",
-    nvfPct: 0, glz: 15, status: "future", statusText: "Будущее",
-    sheets: 43, marks: 38, colorOuter: "NCS S 4502-R", colorInner: "RAL 9016", deviation: "—",
+
+    code: "ПрТ-0407ПВХ",
+    rev: "Изм.2 (30.12.25)",
+    nvfPct: 0,
+    glz: 15,
+    status: "future",
+    statusText: "Будущее",
+    sheets: 43,
+    marks: 38,
+    colorOuter: "NCS S 4502-R",
+    colorInner: "RAL 9016",
+    deviation: "—",
   },
 };
 
@@ -194,33 +276,37 @@ const SUPPLIERS = [
     id: "prefab",
     name: "Префаб",
     materials: "Плитка бетонная",
-    contact: "Иванов И.И.", phone: "+7 (495) 123-45-67", email: "info@prefab.ru", comment: "",
-    status: { tender: true, contract: true, paid: true },
+    contact: "", phone: "", email: "", comment: "",
+    status: { tender: false, contract: false, paid: false },
   },
   {
     id: "technonikol",
     name: "ТехноНИКОЛЬ",
     materials: "Утеплитель",
-    contact: "Петров П.П.", phone: "+7 (495) 765-43-21", email: "sales@tn.ru", comment: "",
-    status: { tender: true, contract: true, paid: false },
+    contact: "", phone: "", email: "", comment: "",
+    status: { tender: false, contract: false, paid: false },
   },
   {
     id: "simplex",
     name: "Симплекс Фасад",
     materials: "Кронштейны, направляющие, метизы",
-    contact: "Сидоров С.С.", phone: "+7 (495) 999-88-77", email: "facade@simplex.ru", comment: "",
-    status: { tender: true, contract: true, paid: true },
+    contact: "", phone: "", email: "", comment: "",
+    status: { tender: false, contract: false, paid: false },
   },
   {
     id: "kerama",
     name: "Керама Марацци",
     materials: "Плитка керамическая",
-    contact: "Алексеев А.А.", phone: "+7 (495) 555-44-33", email: "kerama@marazzi.ru", comment: "",
+    contact: "", phone: "", email: "", comment: "",
     status: { tender: false, contract: false, paid: false },
   },
 ];
 
-// --- Потоки ---
+// ============================================================
+//  НОВЫЕ КОНСТАНТЫ для премиум-интерфейса
+// ============================================================
+
+// --- Потоки (НВФ + Остекление) ---
 const FLOW_SUMMARY = {
   nvf: { plan: 68, fact: 62, deviation: "−4 дн", status: "warn", label: "НВФ" },
   glz: { plan: 46, fact: 48, deviation: "+1 дн", status: "ok",   label: "Остекление" },
@@ -231,7 +317,7 @@ const FEED = [
   { type: "green",  user: "Борисов А.С.", text: "обновил факт ОБ-У-39.2 — 80%",              corp: "3.3", time: "12 минут назад" },
   { type: "orange", user: "Иванов П.П.",  text: "отметил отставание по монтажу кронштейнов", corp: "3.6", time: "2 часа назад" },
   { type: "blue",   user: "Система",      text: "добавлены данные по остеклению корпуса 3.1",                time: "Сегодня · 09:14" },
-  { type: "green",  user: "Петров С.Н.",  text: "завершил остекление ОБ-У-23.2 (100%)",        corp: "3.1", time: "Вчера · 18:40" },
+  { type: "green",  user: "Петров С.Н.",  text: "завершил остекление ОБ-У-23.2 (100%)",        corp: "3.1", time: "вчера · 18:40" },
 ];
 
 // --- Марки остекления ---
@@ -252,105 +338,76 @@ const GLAZING_STATS = {
   critical: 5,
 };
 
-// --- Шаблон работ (График V2) ---
-const WORK_TEMPLATE = {
-  typical: {
-    id: "typical",
-    label: "Типовые этажи",
-    sublabel: "Этажи 2 и выше",
-    works: [
-      {
-        id: "panels",
-        name: "Навесные панели",
-        subworks: [
-          { id: "panels-mount", name: "Монтаж" },
-          { id: "panels-weld",  name: "Разварка" },
-          { id: "panels-clean", name: "Зачистка" },
-        ],
-      },
-      {
-        id: "pvh",
-        name: "Остекление ПВХ",
-        subworks: [
-          { id: "pvh-windows", name: "Монтаж окон" },
-        ],
-      },
-      {
-        id: "alum-typical",
-        name: "Остекление алюминиевое",
-        subworks: [
-          { id: "alum-typical-mount", name: "Монтаж" },
-        ],
-      },
-      {
-        id: "nvf-typical",
-        name: "НВФ",
-        subworks: [
-          { id: "nvf-brackets",   name: "Монтаж кронштейнов" },
-          { id: "nvf-insulation", name: "Монтаж утеплителя" },
-          { id: "nvf-guides",     name: "Монтаж направляющих" },
-          { id: "nvf-tiles",      name: "Монтаж плитки" },
-          { id: "nvf-grout",      name: "Затирка швов" },
-        ],
-      },
-    ],
+// --- Данные для раскрывающегося Ганта (2 потока: НВФ + Остекление) ---
+const GANTT_DATA = {
+  "3.4": {
+    meta: { floors: "9 эт.",  area: 424  },
+    nvf: { left: 8,  width: 26, fact: 44, stages: [
+      { name: "Монтаж кронштейнов",  fact: 100, status: "ok"   },
+      { name: "Монтаж утеплителя",   fact: 80,  status: "ok"   },
+      { name: "Монтаж направляющих", fact: 45,  status: "warn" },
+      { name: "Монтаж облицовки",    fact: 10,  status: "bad"  },
+    ]},
+    glz: { left: 38, width: 30, fact: 50, stages: [
+      { name: "Монтаж витражей",   fact: 60, status: "ok"   },
+      { name: "Балконные блоки",   fact: 35, status: "warn" },
+    ]},
   },
-  firstFloor: {
-    id: "firstFloor",
-    label: "1-й этаж",
-    sublabel: "",
-    works: [
-      {
-        id: "alum-1f",
-        name: "Остекление алюминиевое (витражи)",
-        subworks: [
-          { id: "alum-1f-mount", name: "Монтаж витражей" },
-        ],
-      },
-      {
-        id: "nvf-1f",
-        name: "НВФ",
-        subworks: [
-          { id: "nvf-1f-brackets",   name: "Монтаж кронштейнов" },
-          { id: "nvf-1f-insulation", name: "Монтаж утеплителя" },
-          { id: "nvf-1f-guides",     name: "Монтаж направляющих" },
-          { id: "nvf-1f-tiles",      name: "Монтаж плитки" },
-          { id: "nvf-1f-grout",      name: "Затирка швов" },
-        ],
-      },
-    ],
+  "3.5": {
+    meta: { floors: "24 эт.", area: 1282 },
+    nvf: { left: 8,  width: 42, fact: 52, stages: [
+      { name: "Монтаж кронштейнов",  fact: 90, status: "ok"   },
+      { name: "Монтаж утеплителя",   fact: 70, status: "ok"   },
+      { name: "Монтаж направляющих", fact: 50, status: "warn" },
+      { name: "Монтаж облицовки",    fact: 15, status: "bad"  },
+    ]},
+    glz: { left: 52, width: 38, fact: 55, stages: [
+      { name: "Монтаж витражей",  fact: 75, status: "ok" },
+    ]},
+  },
+  "3.6": {
+    meta: { floors: "32 эт.", area: 2899 },
+    nvf: { left: 14, width: 38, fact: 22, stages: [
+      { name: "Монтаж кронштейнов",  fact: 85, status: "ok"   },
+      { name: "Монтаж утеплителя",   fact: 60, status: "warn" },
+      { name: "Монтаж облицовки",    fact: 8,  status: "bad"  },
+    ]},
+    glz: { left: 60, width: 38, fact: 48, stages: [
+      { name: "Монтаж витражей",  fact: 22, status: "bad" },
+    ]},
+  },
+  "3.7": {
+    meta: { floors: "7 эт.",  area: 656  },
+    nvf: { left: 18, width: 12, fact: 0, stages: [
+      { name: "Монтаж НВФ (1 эт.)",   fact: 100, status: "ok" },
+      { name: "Переустройство МФЦ",   fact: 0,   status: "future" },
+    ]},
+    glz: { left: 88, width: 12, fact: 15, stages: [
+      { name: "Монтаж витражей",  fact: 0, status: "future" },
+    ]},
+  },
+  "3.1": {
+    meta: { floors: "23 эт.", area: 1249 },
+    nvf: { left: 74, width: 20, fact: 20, stages: [
+      { name: "Все этапы",  fact: 0, status: "future" },
+    ]},
+    glz: { left: 82, width: 18, fact: 32, stages: [
+      { name: "Монтаж витражей",  fact: 45, status: "ok"   },
+      { name: "Балконные блоки",  fact: 50, status: "warn" },
+    ]},
+  },
+  "3.2": {
+    meta: { floors: "23 эт.", area: 1286 },
+    nvf: { left: 76, width: 20, fact: 35, stages: [] },
+    glz: { left: 86, width: 14, fact: 41, stages: [
+      { name: "Монтаж витражей",  fact: 20, status: "bad" },
+    ]},
+  },
+  "3.3": {
+    meta: { floors: "23 эт.", area: 1239 },
+    nvf: { left: 76, width: 20, fact: 55, stages: [] },
+    glz: { left: 86, width: 14, fact: 38, stages: [
+      { name: "Монтаж витражей",  fact: 55, status: "ok" },
+    ]},
   },
 };
-
-// --- Факты выполнения V2 ---
-const FACTS_V2 = {
-  "3.1": {}, "3.2": {}, "3.3": {}, "3.4": {}, "3.5": {}, "3.6": {}, "3.7": {},
-};
-
-// Вспомогательные функции
-function subworkProgress(corpse, type, workId, subId) {
-  return FACTS_V2[corpse]?.[`${type}.${workId}.${subId}`] || 0;
-}
-
-function workProgress(corpse, type, workId) {
-  const tpl = WORK_TEMPLATE[type];
-  if (!tpl) return 0;
-  const work = tpl.works.find(w => w.id === workId);
-  if (!work || !work.subworks.length) return 0;
-  const sum = work.subworks.reduce((acc, sub) => acc + subworkProgress(corpse, type, workId, sub.id), 0);
-  return Math.round(sum / work.subworks.length);
-}
-
-function typeProgress(corpse, type) {
-  const tpl = WORK_TEMPLATE[type];
-  if (!tpl) return 0;
-  const workProgresses = tpl.works.map(w => workProgress(corpse, type, w.id));
-  if (!workProgresses.length) return 0;
-  const sum = workProgresses.reduce((a, b) => a + b, 0);
-  return Math.round(sum / workProgresses.length);
-}
-
-function setSubworkProgress(corpse, type, workId, subId, value) {
-  if (!FACTS_V2[corpse]) FACTS_V2[corpse] = {};
-  FACTS_V2[corpse][`${type}.${workId}.${subId}`] = Math.max(0, Math.min(100, value));
-}
