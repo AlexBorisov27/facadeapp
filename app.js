@@ -47,6 +47,7 @@ async function signIn(email, password) {
   if (error) throw error;
   return data.user;
 }
+
 async function signUp(email, password, name) {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -72,7 +73,6 @@ function showLoginScreen() {
   if (loginScreen) loginScreen.style.display = "flex";
   if (appRoot) appRoot.style.display = "none";
 
-  // Очищаем поля паролей
   const pwd = document.getElementById("loginPassword");
   if (pwd) pwd.value = "";
   const pwd2 = document.getElementById("registerPassword");
@@ -80,7 +80,6 @@ function showLoginScreen() {
   const pwd3 = document.getElementById("registerPassword2");
   if (pwd3) pwd3.value = "";
 
-  // Возвращаемся на вкладку «Вход»
   const loginTab = document.querySelector('.login-tab[data-tab="login"]');
   if (loginTab) loginTab.click();
 }
@@ -125,6 +124,7 @@ function clearLoginError() {
     err.classList.remove("show");
   }
 }
+
 function showRegisterError(msg) {
   const err = document.getElementById("registerError");
   if (!err) return;
@@ -165,7 +165,6 @@ function initLoginHandlers() {
   const tabs = document.querySelectorAll(".login-tab");
   const indicator = document.getElementById("loginTabIndicator");
 
-  // ─── Переключение вкладок Вход / Регистрация ───
   tabs.forEach(tab => {
     tab.addEventListener("click", () => {
       const target = tab.dataset.tab;
@@ -186,7 +185,6 @@ function initLoginHandlers() {
     });
   });
 
-  // ─── Вход ───
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -227,7 +225,6 @@ function initLoginHandlers() {
     });
   }
 
-  // ─── Регистрация ───
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -238,7 +235,6 @@ function initLoginHandlers() {
       const password = document.getElementById("registerPassword").value;
       const password2 = document.getElementById("registerPassword2").value;
 
-      // Валидация
       if (!email || !password) {
         showRegisterError("Заполните email и пароль");
         return;
@@ -260,20 +256,17 @@ function initLoginHandlers() {
       try {
         const user = await signUp(email, password, name);
 
-        // Проверка: email уже занят
         if (user && user.identities && user.identities.length === 0) {
           showRegisterError("Этот email уже зарегистрирован");
           return;
         }
 
-        // Проверяем, есть ли сессия сразу (confirm email выключен)
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           showAppScreen(session.user);
           await loadFromCloud();
           showPage("home");
         } else {
-          // Confirm email включён — ждём подтверждения
           showRegisterSuccess(
             "Аккаунт создан! Проверьте почту " + email + " и подтвердите регистрацию."
           );
@@ -302,7 +295,6 @@ function initLoginHandlers() {
     });
   }
 
-  // ─── Выход ───
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       if (dropdown) dropdown.style.display = "none";
@@ -310,7 +302,6 @@ function initLoginHandlers() {
     });
   }
 
-  // ─── Меню пользователя ───
   if (userBtn && dropdown) {
     userBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -322,7 +313,6 @@ function initLoginHandlers() {
     dropdown.addEventListener("click", (e) => e.stopPropagation());
   }
 
-  // ─── Забыли пароль ───
   if (forgotBtn) {
     forgotBtn.addEventListener("click", async () => {
       const email = document.getElementById("loginEmail").value.trim();
@@ -339,7 +329,8 @@ function initLoginHandlers() {
       }
     });
   }
-  }
+}
+
 // ============================================================
 //  ХРАНИЛИЩЕ (localStorage)
 // ============================================================
@@ -369,6 +360,16 @@ let DELIVERY_STATE  = loadStore(KEY_DELIVERIES, {});
 let FACT_STATE      = loadStore(KEY_FACTS, {});
 let SUPPLIERS_STATE = loadStore(KEY_SUPPLIERS, JSON.parse(JSON.stringify(SUPPLIERS)));
 
+// Новая структура фактов (Этап 3+)
+let FACTS_V2_STATE = loadStore("facadeapp.factsV2", null);
+if (FACTS_V2_STATE) {
+  Object.keys(FACTS_V2).forEach(corpse => {
+    if (FACTS_V2_STATE[corpse]) {
+      FACTS_V2[corpse] = FACTS_V2_STATE[corpse];
+    }
+  });
+}
+
 // ============================================================
 //  СИНХРОНИЗАЦИЯ С ОБЛАКОМ (Supabase)
 // ============================================================
@@ -386,11 +387,12 @@ function setSyncStatus(status, text) {
 
 function collectAllData() {
   return {
-    version: 4,
+    version: 5,
     savedAt: nowStamp(),
     milestones: MILESTONE_STATE,
     deliveries: DELIVERY_STATE,
     facts: FACT_STATE,
+    factsV2: FACTS_V2,
     suppliers: SUPPLIERS_STATE,
   };
 }
@@ -402,10 +404,19 @@ function applyAllData(data) {
   if (data.facts)      FACT_STATE = data.facts;
   if (data.suppliers)  SUPPLIERS_STATE = data.suppliers;
 
+  if (data.factsV2) {
+    Object.keys(FACTS_V2).forEach(corpse => {
+      if (data.factsV2[corpse]) {
+        FACTS_V2[corpse] = data.factsV2[corpse];
+      }
+    });
+  }
+
   saveStore(KEY_MILESTONES, MILESTONE_STATE);
   saveStore(KEY_DELIVERIES, DELIVERY_STATE);
   saveStore(KEY_FACTS, FACT_STATE);
   saveStore(KEY_SUPPLIERS, SUPPLIERS_STATE);
+  saveStore("facadeapp.factsV2", FACTS_V2);
   return true;
 }
 
@@ -477,7 +488,7 @@ async function saveToCloud(immediate = false) {
 }
 
 // ============================================================
-//  СВЯЗЬ ЭТАП ↔ МАТЕРИАЛ
+//  СВЯЗЬ ЭТАП ↔ МАТЕРИАЛ (старое — для совместимости)
 // ============================================================
 const STAGE_TO_MATERIAL = {
   "Монтаж кронштейнов":   "Кронштейны",
@@ -574,9 +585,9 @@ const PAGES = {
   "mat-tile":  { title: "Плитка",            sub: "Распределение по цветам NCS",        parent: "materials" },
   "mat-comp":  { title: "Композит",          sub: "Объёмы по корпусам",                 parent: "materials" },
   "mat-frame": { title: "Каркас и крепёж",   sub: "Кронштейны, направляющие, метизы",   parent: "materials" },
-  schedule:    { title: "График работ",      sub: "Диаграмма Ганта · НВФ и Остекление" },
+  schedule:    { title: "График работ",      sub: "Работы по типам этажей · подработы" },
   glazing:     { title: "Остекление",        sub: "Витражные окна и балконные блоки" },
-  fact:        { title: "Факт выполнения",   sub: "Учёт выполненных работ по корпусам" },
+  fact:        { title: "Факт выполнения",   sub: "Учёт выполненных работ по подработам" },
   milestones:  { title: "Контрольные точки", sub: "Ключевые события проекта" },
   deliveries:  { title: "Поставки",          sub: "Учёт приёмки материалов по корпусам" },
   suppliers:   { title: "Поставщики",        sub: "Контрагенты и статусы договоров" },
@@ -587,11 +598,7 @@ let detailOpenCorpse = null;
 
 // ============================================================
 //  КОНЕЦ ЧАСТИ 1/3
-//  Часть 2 — рендер-функции (главная, корпуса, Гант, остекление)
-// ============================================================
-// ============================================================
-//  FacadeApp v4.1 - часть 2/3
-//  Рендер-функции: главная, корпуса, график, остекление, detail panel
+//  Часть 2 — рендер-функции (главная, корпуса, график, остекление)
 // ============================================================
 
 // ============================================================
@@ -613,7 +620,6 @@ function renderHome() {
   });
   const dateCap = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-  // ─── Потоки (НВФ + Остекление) ───
   const nvf = FLOW_SUMMARY.nvf;
   const glz = FLOW_SUMMARY.glz;
 
@@ -636,14 +642,12 @@ function renderHome() {
     `;
   };
 
-  // ─── Вердикт ───
   const verdictHtml = nvf.status === "warn"
     ? `НВФ отстаёт на <b>${nvf.deviation.replace("−", "").replace(" ", " ")}</b>. Остекление идёт в графике.`
     : nvf.status === "ok"
       ? `Оба потока идут в графике.`
       : `НВФ в критическом состоянии. Требуется вмешательство.`;
 
-  // ─── Список корпусов ───
   const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
   const corpsesHtml = corpseOrder.map(cid => {
     const c = CORPSES[cid];
@@ -674,7 +678,6 @@ function renderHome() {
     `;
   }).join("");
 
-  // ─── Лента событий ───
   const feedHtml = FEED.map(f => `
     <div class="feed-item">
       <div class="dot ${f.type}"></div>
@@ -685,7 +688,6 @@ function renderHome() {
     </div>
   `).join("");
 
-  // ─── Ближайшие КТ ───
   const upcoming = MILESTONES
     .filter(m => !(MILESTONE_STATE[milestoneKey(m)]?.done))
     .map(m => ({ ...m, dateObj: parseDate(m.date) }))
@@ -823,102 +825,23 @@ function renderCorpses() {
 }
 
 // ============================================================
-//  ГРАФИК — раскрывающийся Гант
-// ============================================================
-function renderSchedule() {
-  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
-
-  const renderStage = (stage) => `
-    <div class="stage-item">
-      <div class="stage-name">${stage.name}</div>
-      <div class="stage-progress"><div class="fill ${stage.status}" style="width:${stage.fact}%"></div></div>
-      <div class="stage-status ${stage.status}">${stage.fact}%</div>
-    </div>
-  `;
-
-  const corpsHtml = corpseOrder.map(cid => {
-    const g = GANTT_DATA[cid];
-    if (!g) return "";
-    const nvfStages = g.nvf.stages.map(renderStage).join("");
-    const glzStages = g.glz.stages.map(renderStage).join("");
-
-    return `
-      <div class="gantt-corp" data-corp="${cid}">
-        <div class="gantt-corp-row">
-          <div class="label">
-            ${cid}
-            <small>${g.meta.floors} · ${g.meta.area} м²</small>
-          </div>
-          <div class="gantt-bars">
-            <div class="gantt-bar nvf" style="left:${g.nvf.left}%; width:${g.nvf.width}%;"></div>
-            <div class="gantt-bar glz" style="left:${g.glz.left}%; width:${g.glz.width}%;"></div>
-            <div class="gantt-fact-line" style="left:${g.nvf.left + g.nvf.width * (g.nvf.fact / 100)}%;"></div>
-          </div>
-          <div class="chevron">›</div>
-        </div>
-        <div class="gantt-detail">
-          <div class="detail-inner">
-            ${nvfStages ? `<div class="detail-title">НВФ · по этапам</div>${nvfStages}` : ""}
-            ${glzStages ? `<div class="detail-title">Остекление · по этапам</div>${glzStages}` : ""}
-          </div>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  return `
-    <div class="gantt">
-      <div class="gantt-header">
-        <h3>Диаграмма Ганта</h3>
-        <div class="legend">
-          <div class="item"><span class="sw nvf"></span>НВФ</div>
-          <div class="item"><span class="sw glz"></span>Остекление</div>
-          <div class="item"><span class="sw fact"></span>Факт</div>
-        </div>
-      </div>
-
-      <div class="gantt-chart">
-        <div class="gantt-months">
-          <div></div>
-          <div class="row">
-            <span>сен</span><span>окт</span><span>ноя</span><span>дек</span>
-            <span>янв</span><span>фев</span><span>мар</span><span>апр</span>
-          </div>
-        </div>
-
-        ${corpsHtml}
-      </div>
-
-      <p style="font-size:12px;color:var(--text-gray);margin-top:16px;line-height:1.5;">
-        Красная линия — фактическая дата. <b>Клик по корпусу</b> — детализация по этапам.
-      </p>
-    </div>
-  `;
-}
-
-
-// ============================================================
-//  ЭТАП 3 — НОВЫЙ «График работ» (по типам этажей)
+//  ЭТАП 3 — ГРАФИК РАБОТ по типам этажей
 // ============================================================
 function renderScheduleV2() {
   const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
 
-  // Функция для одной работы внутри типа этажа
   const renderWorkRow = (corpse, type, work) => {
     const prog = workProgress(corpse, type, work.id);
-    
     let statusClass = "future";
     if (prog >= 100) statusClass = "ok";
-    else if (prog >= 50) statusClass = "ok";
     else if (prog > 0) statusClass = "warn";
-    
-    // Раскрываемые подработы
+
     const subworksHtml = work.subworks.map(sub => {
       const subProg = subworkProgress(corpse, type, work.id, sub.id);
       let subStatus = "future";
       if (subProg >= 100) subStatus = "ok";
       else if (subProg > 0) subStatus = "warn";
-      
+
       return `
         <div class="subwork-row">
           <div class="subwork-name">${sub.name}</div>
@@ -948,20 +871,18 @@ function renderScheduleV2() {
     `;
   };
 
-  // Рендер корпуса
   const corpseHtml = corpseOrder.map(cid => {
     const c = CORPSES[cid];
     const dotClass = c.status === "ok" ? "" : c.status;
-    
+
     const typicalHtml = WORK_TEMPLATE.typical.works
       .map(w => renderWorkRow(cid, "typical", w)).join("");
-    
     const firstFloorHtml = WORK_TEMPLATE.firstFloor.works
       .map(w => renderWorkRow(cid, "firstFloor", w)).join("");
-    
+
     const typicalProg = typeProgress(cid, "typical");
     const firstProg = typeProgress(cid, "firstFloor");
-    
+
     return `
       <div class="schedule-corpse">
         <div class="schedule-corpse-head">
@@ -970,12 +891,12 @@ function renderScheduleV2() {
             Корпус ${cid}
           </div>
           <div class="schedule-corpse-meta">
-            ${c.floors} · ${fmt(c.total)} м² · 
-            <b>Тип: ${typicalProg}%</b> · 
+            ${c.floors} · ${fmt(c.total)} м² ·
+            <b>Тип: ${typicalProg}%</b> ·
             <b>1 эт: ${firstProg}%</b>
           </div>
         </div>
-        
+
         <div class="schedule-section">
           <div class="schedule-section-title">
             🏢 Типовые этажи (2+)
@@ -983,7 +904,7 @@ function renderScheduleV2() {
           </div>
           <div class="schedule-works">${typicalHtml}</div>
         </div>
-        
+
         <div class="schedule-section">
           <div class="schedule-section-title">
             🏬 1-й этаж
@@ -1003,7 +924,6 @@ function renderScheduleV2() {
           Работы разделены по типам этажей · Прогресс считается по подработам
         </div>
       </div>
-      
       ${corpseHtml}
     </div>
   `;
@@ -1127,10 +1047,6 @@ function renderDetailPanel(cid) {
       <div class="dp-lbl">Действия</div>
       <div class="dp-actions">
         <button class="dp-btn primary" data-goto="fact">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-            <path d="M14 2v6h6"/>
-          </svg>
           Факт выполнения
         </button>
         <button class="dp-btn" data-goto="deliveries">
@@ -1163,21 +1079,124 @@ function closeDetail() {
 }
 
 // ============================================================
-//  РАСКРЫТИЕ КОРПУСА В ГАНТЕ
+//  КОНЕЦ ЧАСТИ 2/3
 // ============================================================
-function toggleCorp(rowEl) {
-  const corp = rowEl.closest(".gantt-corp");
-  if (corp) corp.classList.toggle("open");
-}
 
 // ============================================================
-//  КОНЕЦ ЧАСТИ 2/3
-//  Часть 3 — старые рендеры + роутер + init
+//  ЭТАП 4 — ФАКТ ВЫПОЛНЕНИЯ по подработам
 // ============================================================
-// ============================================================
-//  FacadeApp v4.1 - часть 3/3
-//  Старые рендеры, роутер, аккордеон, init
-// ============================================================
+function renderFactV2() {
+  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
+
+  const corpseAvg = (cid) => {
+    const t = typeProgress(cid, "typical");
+    const f = typeProgress(cid, "firstFloor");
+    const parts = [t, f].filter(v => v > 0);
+    if (!parts.length) return 0;
+    return Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
+  };
+
+  const renderSubwork = (cid, type, workId, sub) => {
+    const val = subworkProgress(cid, type, workId, sub.id);
+    return `
+      <div class="fw-row">
+        <div class="fw-name">${sub.name}</div>
+        <div class="fw-slider-wrap">
+          <input type="range" class="fw-slider"
+                 data-corpse="${cid}" data-type="${type}"
+                 data-work="${workId}" data-sub="${sub.id}"
+                 min="0" max="100" value="${val}" />
+        </div>
+        <div class="fw-value-wrap">
+          <input type="number" class="fw-input"
+                 data-corpse="${cid}" data-type="${type}"
+                 data-work="${workId}" data-sub="${sub.id}"
+                 min="0" max="100" value="${val}" />
+          <span class="fw-pct">%</span>
+        </div>
+      </div>
+    `;
+  };
+
+  const renderWork = (cid, type, work) => {
+    const prog = workProgress(cid, type, work.id);
+    let statusClass = "future";
+    if (prog >= 100) statusClass = "ok";
+    else if (prog > 0) statusClass = "warn";
+
+    const subsHtml = work.subworks.length
+      ? `<div class="fw-subs">${work.subworks.map(sub => renderSubwork(cid, type, work.id, sub)).join("")}</div>`
+      : "";
+
+    return `
+      <div class="fw-work">
+        <div class="fw-work-head">
+          <div class="fw-work-name">${work.name}</div>
+          <div class="fw-work-progress">
+            <div class="fw-work-bar">
+              <div class="fw-work-fill ${statusClass}" style="width:${prog}%"></div>
+            </div>
+            <div class="fw-work-pct">${prog}%</div>
+          </div>
+        </div>
+        ${subsHtml}
+      </div>
+    `;
+  };
+
+  const corpseHtml = corpseOrder.map(cid => {
+    const c = CORPSES[cid];
+    const dotClass = c.status === "ok" ? "" : c.status;
+    const avg = corpseAvg(cid);
+
+    const typicalWorks = WORK_TEMPLATE.typical.works
+      .map(w => renderWork(cid, "typical", w)).join("");
+    const firstWorks = WORK_TEMPLATE.firstFloor.works
+      .map(w => renderWork(cid, "firstFloor", w)).join("");
+
+    return `
+      <div class="fw-corpse">
+        <div class="fw-corpse-head">
+          <div class="fw-corpse-title">
+            <span class="corpse-row-dot ${dotClass}"></span>
+            Корпус ${cid}
+          </div>
+          <div class="fw-corpse-meta">
+            ${c.floors} · ${fmt(c.total)} м² · <b>${avg}%</b>
+          </div>
+        </div>
+
+        <div class="fw-section">
+          <div class="fw-section-title">
+            🏢 Типовые этажи (2+)
+            <span class="fw-section-pct">${typeProgress(cid, "typical")}%</span>
+          </div>
+          <div class="fw-works">${typicalWorks}</div>
+        </div>
+
+        <div class="fw-section">
+          <div class="fw-section-title">
+            🏬 1-й этаж
+            <span class="fw-section-pct">${typeProgress(cid, "firstFloor")}%</span>
+          </div>
+          <div class="fw-works">${firstWorks}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="fact-v2">
+      <div class="fact-v2-header">
+        <h2 class="fact-v2-title">Факт выполнения</h2>
+        <div class="fact-v2-sub">
+          Двигайте слайдеры — прогресс пересчитывается автоматически
+        </div>
+      </div>
+      ${corpseHtml}
+    </div>
+  `;
+}
 
 // ============================================================
 //  DASHBOARD
@@ -1389,91 +1408,6 @@ function renderMaterialsFrame() {
         <tbody>${rows}${totalRow}</tbody>
       </table>
     </div>
-  `;
-}
-
-// ============================================================
-//  FACT
-// ============================================================
-function renderFact() {
-  const totalProg = projectProgress();
-  const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
-
-  const cardsHtml = corpseOrder.map(cid => {
-    const rows = WORK_SCHEDULE.filter(([c]) => c === cid);
-    if (!rows.length) return "";
-
-    const corpseProg = corpseProgress(cid);
-
-    const stagesHtml = rows.map(([, stage]) => {
-      const key = factKey(cid, stage);
-      const mat = getMaterialAvailable(cid, stage);
-      const maxVal = mat.required ? Math.min(100, mat.percent) : 100;
-      const val = Math.min(FACT_STATE[key] || 0, maxVal);
-      const blocked = mat.required && mat.percent === 0;
-      const limited = mat.required && mat.percent > 0 && mat.percent < 100;
-
-      let statusIcon, statusText, statusClass;
-      if (!mat.required) {
-        statusIcon = "⚪"; statusText = "Без привязки к материалу"; statusClass = "";
-      } else if (mat.percent >= 100) {
-        statusIcon = "🟢"; statusText = `Материал в наличии (${fmt(mat.arrived)} из ${fmt(mat.plan)})`; statusClass = "mat-ok";
-      } else if (mat.percent > 0) {
-        statusIcon = "🟡"; statusText = `Частично: ${mat.percent}% (${fmt(mat.arrived)} из ${fmt(mat.plan)})`; statusClass = "mat-partial";
-      } else {
-        statusIcon = "🔴"; statusText = `Материал не привезён (0 из ${fmt(mat.plan)})`; statusClass = "mat-empty";
-      }
-
-      return `
-        <div class="fact-stage ${blocked ? 'fact-blocked' : ''}">
-          <div class="fact-stage-head">
-            <div class="fact-stage-name">${stage}</div>
-            <div class="fact-stage-status ${statusClass}" title="${statusText}">
-              ${statusIcon} ${statusText}
-            </div>
-          </div>
-          <div class="fact-controls">
-            <input type="range" class="fact-slider" data-cid="${cid}" data-stage="${stage}"
-                   min="0" max="${maxVal}" value="${val}"
-                   ${blocked ? 'disabled' : ''} />
-            <div class="fact-value-wrap">
-              <input type="number" class="fact-input" data-cid="${cid}" data-stage="${stage}"
-                     min="0" max="${maxVal}" value="${val}"
-                     ${blocked ? 'disabled' : ''} />
-              <span class="fact-pct">%</span>
-            </div>
-          </div>
-          ${limited ? `<div class="fact-hint">Максимум ${mat.percent}% — привезено частично</div>` : ""}
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <div class="fact-card glass">
-        <div class="fact-head">
-          <div>
-            <div class="fact-title">Корпус ${cid}</div>
-            <div class="fact-sub">${CORPSES[cid].floors} эт. · ${fmt(CORPSES[cid].total)} м²</div>
-          </div>
-          <div class="fact-progress">
-            <div class="fact-progress-bar"><div class="fact-progress-fill" style="width:${corpseProg}%"></div></div>
-            <div class="fact-progress-text">${corpseProg}%</div>
-          </div>
-        </div>
-        <div class="fact-stages">${stagesHtml}</div>
-      </div>
-    `;
-  }).join("");
-
-  return `
-    <div class="milestone-progress glass">
-      <div class="mp-info">
-        <div class="mp-label">Общий прогресс проекта</div>
-        <div class="mp-count">${totalProg}%</div>
-      </div>
-      <div class="mp-bar"><div class="mp-fill" style="width:${totalProg}%"></div></div>
-    </div>
-    ${cardsHtml}
   `;
 }
 
@@ -1703,7 +1637,7 @@ const RENDERERS = {
   "mat-frame": renderMaterialsFrame,
   schedule:    renderScheduleV2,
   glazing:     renderGlazing,
-  fact:        renderFact,
+  fact:        renderFactV2,
   milestones:  renderMilestones,
   deliveries:  renderDeliveries,
   suppliers:   renderSuppliers,
@@ -1726,19 +1660,16 @@ function showPage(page) {
   if (pageSub) pageSub.textContent = meta.sub;
   if (content) content.innerHTML = crumb + (RENDERERS[page] ? RENDERERS[page]() : "");
 
-  // Подсветка активного пункта в sidebar
   const rootPage = meta.parent || page;
   $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.page === rootPage || b.dataset.page === page));
 
-  // Подсветка активного раздела
   $$(".nav-section").forEach(sec => {
     const active = sec.querySelector(".nav-item.active, .nav-header.active");
     sec.classList.toggle("active", !!active && !sec.querySelector(".nav-sub"));
   });
 
-  // Обновляем прогресс-бары
   requestAnimationFrame(() => {
-    $$(".corpse-row-fill, .flow .fill, .stage-progress .fill, .fact-progress-fill, .dp-progress-fill").forEach(el => {
+    $$(".corpse-row-fill, .flow .fill, .stage-progress .fill, .fact-progress-fill, .dp-progress-fill, .fw-work-fill").forEach(el => {
       const w = el.style.width;
       el.style.width = "0";
       setTimeout(() => { el.style.width = w; }, 50);
@@ -1747,13 +1678,9 @@ function showPage(page) {
 }
 
 // ============================================================
-//  EXPORT CSV
-// ============================================================
-// ============================================================
 //  ЭКСПОРТ PDF — отчёт для руководителя
 // ============================================================
 function exportPDF() {
-  // Проверяем, что библиотека загрузилась
   if (typeof html2pdf === "undefined") {
     alert("Библиотека html2pdf не загружена. Проверьте интернет-соединение и обновите страницу.");
     return;
@@ -1764,14 +1691,12 @@ function exportPDF() {
     day: "numeric", month: "long", year: "numeric"
   });
 
-  // ─── Потоки ───
   const nvf = FLOW_SUMMARY.nvf;
   const glz = FLOW_SUMMARY.glz;
   const totalPct = Math.round((nvf.fact + glz.fact) / 2);
 
   const statusClass = (s) => s === "ok" ? "ok" : s === "warn" ? "warn" : "risk";
 
-  // ─── Проблемные корпуса ───
   const problems = [];
   Object.keys(CORPSES).sort().forEach(cid => {
     const c = CORPSES[cid];
@@ -1785,7 +1710,6 @@ function exportPDF() {
     }
   });
 
-  // ─── Список корпусов ───
   const corpseOrder = ["3.4", "3.5", "3.6", "3.7", "3.1", "3.2", "3.3"];
   const corpseRows = corpseOrder.map(cid => {
     const c = CORPSES[cid];
@@ -1802,7 +1726,6 @@ function exportPDF() {
     `;
   }).join("");
 
-  // ─── Ближайшие контрольные точки ───
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const upcoming = MILESTONES
     .filter(m => !(MILESTONE_STATE[milestoneKey(m)]?.done))
@@ -1818,7 +1741,6 @@ function exportPDF() {
     </div>
   `).join("") : `<div class="pdf-milestone">Все контрольные точки пройдены</div>`;
 
-  // ─── Проблемы ───
   const problemsHtml = problems.length
     ? problems.map(p => `
         <div class="pdf-alert ${p.status}">
@@ -1833,7 +1755,6 @@ function exportPDF() {
         <div class="pdf-alert-text">Все корпуса в графике</div>
        </div>`;
 
-  // ─── Финальный HTML отчёта ───
   const reportHtml = `
     <div class="pdf-report">
       <div class="pdf-header">
@@ -1886,22 +1807,19 @@ function exportPDF() {
     </div>
   `;
 
-  // ─── Временный контейнер ───
   const container = document.createElement("div");
-container.style.position = "fixed";
-container.style.left = "-9999px";
-container.style.top = "0";
-container.style.width = "760px";
-container.style.background = "#FFFFFF";
-container.style.padding = "0";
-container.style.margin = "0";
-container.innerHTML = reportHtml.trim();
-document.body.appendChild(container);
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
+  container.style.top = "0";
+  container.style.width = "760px";
+  container.style.background = "#FFFFFF";
+  container.style.padding = "0";
+  container.style.margin = "0";
+  container.innerHTML = reportHtml.trim();
+  document.body.appendChild(container);
 
-  // ─── Имя файла ───
   const filename = `FacadeApp_Отчёт_${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}.pdf`;
 
-  // ─── Настройки PDF ───
   const opt = {
     margin: 0,
     filename: filename,
@@ -1911,8 +1829,8 @@ document.body.appendChild(container);
       useCORS: true,
       backgroundColor: "#FFFFFF",
       logging: false,
-          windowWidth: 794,
-    width: 794,
+      windowWidth: 794,
+      width: 794,
     },
     jsPDF: {
       unit: "mm",
@@ -1922,25 +1840,27 @@ document.body.appendChild(container);
     pagebreak: { mode: ["avoid-all", "css"] },
   };
 
-  // ─── Генерация и скачивание ───
- // Вынимаем отчёт из контейнера — html2pdf не должен видеть родителя
-const reportElement = container.firstElementChild;
-container.removeChild(reportElement);
+  const reportElement = container.firstElementChild;
+  container.removeChild(reportElement);
 
-html2pdf()
-  .set(opt)
-  .from(reportElement)
-  .save()
-  .then(() => {
-    console.log("✅ PDF сгенерирован:", filename);
-    document.body.removeChild(container);
-  })
-  .catch((err) => {
-    console.error("Ошибка PDF:", err);
-    document.body.removeChild(container);
-    alert("Не удалось создать PDF: " + err.message);
-  });
+  html2pdf()
+    .set(opt)
+    .from(reportElement)
+    .save()
+    .then(() => {
+      console.log("✅ PDF сгенерирован:", filename);
+      document.body.removeChild(container);
+    })
+    .catch((err) => {
+      console.error("Ошибка PDF:", err);
+      document.body.removeChild(container);
+      alert("Не удалось создать PDF: " + err.message);
+    });
 }
+
+// ============================================================
+//  ЭКСПОРТ CSV
+// ============================================================
 function exportCSV() {
   let headers = [], rows = [], filename = "export.csv";
 
@@ -1978,15 +1898,30 @@ function exportCSV() {
     });
     filename = "frame.csv";
   } else if (currentPage === "schedule") {
-    headers = ["Корпус", "Этап", "Начало", "Окончание", "Объём", "Факт %"];
-    rows = WORK_SCHEDULE.map(([cid, stage, s, e, vol]) => [cid, stage, s, e, vol, getFact(cid, stage)]);
+    headers = ["Корпус", "Тип", "Работа", "Подработа", "Факт %"];
+    rows = [];
+    Object.keys(WORK_TEMPLATE).forEach(type => {
+      WORK_TEMPLATE[type].works.forEach(w => {
+        w.subworks.forEach(sub => {
+          Object.keys(CORPSES).forEach(cid => {
+            const v = subworkProgress(cid, type, w.id, sub.id);
+            if (v > 0) rows.push([cid, type, w.name, sub.name, v]);
+          });
+        });
+      });
+    });
     filename = "schedule.csv";
   } else if (currentPage === "fact") {
-    headers = ["Корпус", "Этап", "Факт %", "Материал", "Привезено", "План", "Доступно %"];
+    headers = ["Корпус", "Тип", "Работа", "Подработа", "Факт %"];
     rows = [];
-    WORK_SCHEDULE.forEach(([cid, stage]) => {
-      const mat = getMaterialAvailable(cid, stage);
-      rows.push([cid, stage, getFact(cid, stage), STAGE_TO_MATERIAL[stage] || "—", mat.arrived, mat.plan, mat.percent]);
+    Object.keys(WORK_TEMPLATE).forEach(type => {
+      WORK_TEMPLATE[type].works.forEach(w => {
+        w.subworks.forEach(sub => {
+          Object.keys(CORPSES).forEach(cid => {
+            rows.push([cid, type, w.name, sub.name, subworkProgress(cid, type, w.id, sub.id)]);
+          });
+        });
+      });
     });
     filename = "fact.csv";
   } else if (currentPage === "milestones") {
@@ -2047,7 +1982,7 @@ function applySearch(query) {
   if (!container) return;
   const clearAll = () => {
     $$("tr", container).forEach(tr => tr.style.display = "");
-    $$(".corpse-card, .corpse-row, .gantt-row, .gantt-corp-row, .folder-card, .milestone-card, .delivery-card, .home-kt-row, .home-corpus, .fact-card, .fact-stage, .supplier-card, .gantt-summary-card, .mark, .flow", container).forEach(el => el.style.display = "");
+    $$(".corpse-card, .corpse-row, .gantt-row, .folder-card, .milestone-card, .delivery-card, .home-kt-row, .home-corpus, .fact-card, .fact-stage, .supplier-card, .mark, .flow, .fw-corpse, .fw-work", container).forEach(el => el.style.display = "");
   };
   if (!q) { clearAll(); return; }
   clearAll();
@@ -2057,18 +1992,15 @@ function applySearch(query) {
     });
   };
   filterList("tbody tr");
-  filterList(".corpse-card");
   filterList(".corpse-row");
-  filterList(".gantt-corp-row");
   filterList(".folder-card");
   filterList(".milestone-card");
   filterList(".delivery-card");
   filterList(".home-kt-row");
-  filterList(".home-corpus");
-  filterList(".fact-card");
   filterList(".supplier-card");
-  filterList(".gantt-summary-card");
   filterList(".mark");
+  filterList(".fw-corpse");
+  filterList(".fw-work");
 }
 
 // ============================================================
@@ -2089,7 +2021,7 @@ function initAccordion() {
   $$(".nav-section").forEach(section => {
     const header = section.querySelector(".nav-header");
     const sub = section.querySelector(".nav-sub");
-    if (!sub) return; // Обзор — без подпунктов
+    if (!sub) return;
 
     header.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2097,7 +2029,6 @@ function initAccordion() {
     });
   });
 
-  // Клик по подпункту — смена страницы
   $$(".nav-item").forEach(item => {
     item.addEventListener("click", () => {
       const page = item.dataset.page;
@@ -2105,7 +2036,6 @@ function initAccordion() {
     });
   });
 
-  // Клик по «Обзор» (без подпунктов)
   const overviewHeader = document.querySelector('[data-section="overview"] .nav-header');
   if (overviewHeader) {
     overviewHeader.addEventListener("click", () => {
@@ -2132,10 +2062,8 @@ function initDetailPanel() {
 //  INIT
 // ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1. Обработчики формы логина
   initLoginHandlers();
 
-  // 2. Проверяем авторизацию
   const user = await checkAuth();
   if (!user) {
     showLoginScreen();
@@ -2143,25 +2071,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // 3. Пользователь авторизован — показываем приложение
   showAppScreen(user);
   console.log("Авторизован как:", user.email);
 
-  // 4. Загружаем данные из облака
   await loadFromCloud();
-
-  // 5. Автосрез фактов
   autoTrimFacts();
 
-  // 6. Аккордеон sidebar
   initAccordion();
-
-  // 7. Detail Panel — обработчики закрытия
   initDetailPanel();
 
   // 8. Делегирование кликов
   document.body.addEventListener("click", (e) => {
-    // Удаление поставщика
     const del = e.target.closest("[data-del]");
     if (del) {
       e.preventDefault();
@@ -2174,7 +2094,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Добавление поставщика
     if (e.target.closest("#addSupplier")) {
       const id = "supp_" + Date.now();
       SUPPLIERS_STATE.push({
@@ -2188,13 +2107,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Быстрый экспорт
     if (e.target.closest("#quickExport")) {
       exportCSV();
       return;
     }
 
-    // Клик по корпусу → detail panel
     const corpseRow = e.target.closest("[data-corpse]");
     if (corpseRow) {
       const cid = corpseRow.dataset.corpse;
@@ -2202,18 +2119,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Клик по корпусу в Ганте → раскрытие
-    const ganttRow = e.target.closest(".gantt-corp-row");
-    if (ganttRow) {
-      toggleCorp(ganttRow);
-      return;
-    }
-
-    // Клик по контрольной точке
     const kt = e.target.closest("[data-kt]");
     if (kt) { handleMilestoneClick(kt.dataset.kt); return; }
 
-    // Переход по data-goto
     const goto = e.target.closest("[data-goto]");
     if (goto) {
       e.preventDefault();
@@ -2221,7 +2129,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Клик по чипу (фильтр)
     const chip = e.target.closest(".chip");
     if (chip) {
       chip.parentElement.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
@@ -2264,7 +2171,68 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Ввод слайдера/числа факта
+    // Ввод в слайдерах факта V2
+    const fwSlider = e.target.closest(".fw-slider");
+    const fwInput = e.target.closest(".fw-input");
+    if (fwSlider || fwInput) {
+      const el = fwSlider || fwInput;
+      const cid  = el.dataset.corpse;
+      const type = el.dataset.type;
+      const work = el.dataset.work;
+      const sub  = el.dataset.sub;
+      let val = parseFloat(el.value) || 0;
+      if (val < 0) val = 0;
+      if (val > 100) val = 100;
+
+      setSubworkProgress(cid, type, work, sub, val);
+      saveStore("facadeapp.factsV2", FACTS_V2);
+      saveToCloud();
+
+      const row = el.closest(".fw-row");
+      if (row) {
+        const other = fwSlider
+          ? row.querySelector(`.fw-input[data-corpse="${cid}"][data-type="${type}"][data-work="${work}"][data-sub="${sub}"]`)
+          : row.querySelector(`.fw-slider[data-corpse="${cid}"][data-type="${type}"][data-work="${work}"][data-sub="${sub}"]`);
+        if (other) other.value = val;
+      }
+
+      const workEl = el.closest(".fw-work");
+      if (workEl) {
+        const wp = workProgress(cid, type, work);
+        let wClass = "future";
+        if (wp >= 100) wClass = "ok";
+        else if (wp > 0) wClass = "warn";
+
+        const wFill = workEl.querySelector(".fw-work-fill");
+        const wPct  = workEl.querySelector(".fw-work-pct");
+        if (wFill) {
+          wFill.style.width = wp + "%";
+          wFill.className = "fw-work-fill " + wClass;
+        }
+        if (wPct) wPct.textContent = wp + "%";
+      }
+
+      const section = el.closest(".fw-section");
+      if (section) {
+        const tp = typeProgress(cid, type);
+        const sectionPct = section.querySelector(".fw-section-pct");
+        if (sectionPct) sectionPct.textContent = tp + "%";
+      }
+
+      const corpseEl = el.closest(".fw-corpse");
+      if (corpseEl) {
+        const t = typeProgress(cid, "typical");
+        const f = typeProgress(cid, "firstFloor");
+        const parts = [t, f].filter(v => v > 0);
+        const avg = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : 0;
+        const meta = corpseEl.querySelector(".fw-corpse-meta b");
+        if (meta) meta.textContent = avg + "%";
+      }
+
+      return;
+    }
+
+    // Ввод слайдера/числа факта (старый — оставлен для совместимости)
     const slider = e.target.closest(".fact-slider");
     const factInput = e.target.closest(".fact-input");
     if (slider || factInput) {
@@ -2333,14 +2301,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // 11. Кнопки в topbar
-     const globalSearch = $("#globalSearch");
-    const exportBtn = $("#exportBtn");
-    const exportPdfBtn = $("#exportPdfBtn");
-    const themeToggle = $("#themeToggle");
-    if (globalSearch) globalSearch.addEventListener("input", (e) => applySearch(e.target.value));
-    if (exportBtn) exportBtn.addEventListener("click", exportCSV);
-    if (exportPdfBtn) exportPdfBtn.addEventListener("click", exportPDF);
-    if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
+  const globalSearch = $("#globalSearch");
+  const exportBtn = $("#exportBtn");
+  const exportPdfBtn = $("#exportPdfBtn");
+  const themeToggle = $("#themeToggle");
+  if (globalSearch) globalSearch.addEventListener("input", (e) => applySearch(e.target.value));
+  if (exportBtn) exportBtn.addEventListener("click", exportCSV);
+  if (exportPdfBtn) exportPdfBtn.addEventListener("click", exportPDF);
+  if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
 
   // 12. Стартовая страница
   showPage("home");
