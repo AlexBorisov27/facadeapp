@@ -22,9 +22,9 @@
   <title>FacadeApp — Управление проектами НВФ</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
+<body>
 
-  <!-- ═══════════ ЭКРАН ЛОГИНА ═══════════ -->
-   <!-- ═══════════ ЭКРАН ЛОГИНА / РЕГИСТРАЦИИ ═══════════ -->
+  <!-- ═══════════ ЭКРАН ЛОГИНА / РЕГИСТРАЦИИ ═══════════ -->
   <div id="loginScreen" class="login-screen">
     <div class="login-card glass">
       <div class="login-logo">
@@ -109,7 +109,7 @@
 
       <nav class="nav">
 
-        <!-- ОБЗОР (без подпунктов) -->
+        <!-- ОБЗОР -->
         <div class="nav-section active" data-section="overview">
           <button class="nav-header" data-page="home">
             <span class="nav-icon">
@@ -124,12 +124,12 @@
           </button>
         </div>
 
-        <!-- ОБЪЕКТЫ (с подпунктами) -->
-        <div class="nav-section open" data-section="objects">
+        <!-- ОБЪЕКТЫ -->
+        <div class="nav-section" data-section="objects">
           <button class="nav-header" type="button">
             <span class="nav-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/>
+                <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
               </svg>
             </span>
             <span class="nav-label">Объекты</span>
@@ -141,15 +141,16 @@
           </button>
           <div class="nav-sub">
             <div class="nav-sub-inner">
-              <button class="nav-item active" data-page="corpses">Корпуса</button>
+              <button class="nav-item" data-page="corpses">Корпуса</button>
               <button class="nav-item" data-page="materials">Материалы</button>
               <button class="nav-item" data-page="milestones">Контрольные точки</button>
               <button class="nav-item" data-page="deliveries">Поставки</button>
+              <button class="nav-item" data-page="volumes">Объёмы</button>
             </div>
           </div>
         </div>
 
-        <!-- РАБОТЫ (с подпунктами) -->
+        <!-- РАБОТЫ -->
         <div class="nav-section" data-section="works">
           <button class="nav-header" type="button">
             <span class="nav-icon">
@@ -174,7 +175,7 @@
           </div>
         </div>
 
-        <!-- АНАЛИТИКА (с подпунктами) -->
+        <!-- АНАЛИТИКА -->
         <div class="nav-section" data-section="analytics">
           <button class="nav-header" type="button">
             <span class="nav-icon">
@@ -237,21 +238,21 @@
           </div>
 
           <button id="exportPdfBtn" class="btn btn-pdf" title="Отчёт для руководителя (PDF)">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-    <path d="M14 2v6h6"/>
-  </svg>
-  PDF
-</button>
-<button id="exportBtn" class="btn btn-primary">⬇ Экспорт CSV</button>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <path d="M14 2v6h6"/>
+            </svg>
+            PDF
+          </button>
+          <button id="exportBtn" class="btn btn-primary">⬇ Экспорт CSV</button>
         </div>
       </header>
 
-      <!-- ═══ КОНТЕНТ (рендерится из app.js) ═══ -->
+      <!-- ═══ КОНТЕНТ ═══ -->
       <section id="content" class="content"></section>
     </main>
 
-    <!-- ═══ DETAIL PANEL (справа, скрыт по умолчанию) ═══ -->
+    <!-- ═══ DETAIL PANEL ═══ -->
     <div class="overlay" id="overlay"></div>
     <aside class="detail-panel" id="detailPanel">
       <div class="dp-header">
@@ -266,29 +267,26 @@
 
   </div>
 
-  <!-- ═══════════ SUPABASE SDK ═══════════ -->
+  <!-- ═══════════ SUPABASE SDK & СКРИПТЫ ═══════════ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script>
-   window.supabase = window.supabase.createClient(
-    "https://dcwmeltcrizsaalxvrlk.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjd21lbHRjcml6c2FhbHh2cmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODY3OTYsImV4cCI6MjEwNTc2Mjc5Nn0.chhVffiuHrMjjfwaf60twSLijCgZnh_-FUdUoYoCl6E"
-  );
+    window.supabase = window.supabase.createClient(
+      "https://dcwmeltcrizsaalxvrlk.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjd21lbHRjcml6c2FhbHh2cmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODY3OTYsImV4cCI6MjEwNTc2Mjc5Nn0.chhVffiuHrMjjfwaf60twSLijCgZnh_-FUdUoYoCl6E"
+    );
   </script>
-<!-- html2pdf для экспорта в PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
   <script>
-  // Регистрация Service Worker
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker
-        .register("./sw.js")
-        .then((reg) => console.log("✅ Service Worker зарегистрирован:", reg.scope))
-        .catch((err) => console.warn("Service Worker не зарегистрирован:", err));
-    });
-  }
-</script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("./sw.js")
+          .then((reg) => console.log("✅ Service Worker зарегистрирован:", reg.scope))
+          .catch((err) => console.warn("Service Worker не зарегистрирован:", err));
+      });
+    }
+  </script>
 </body>
 </html>
